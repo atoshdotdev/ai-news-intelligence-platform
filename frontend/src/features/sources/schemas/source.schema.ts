@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 export const sourceSchema = z.object({
-  source_name: z.string().min(2),
-  source_url: z.url(),
+  name: z.string().min(2, "Name is required"),
+  url: z.url("Please enter a valid URL"),
+  selector: z.string().optional(),
 });
 
 export type SourceFormValues = z.infer<typeof sourceSchema>;

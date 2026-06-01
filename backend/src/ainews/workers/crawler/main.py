@@ -2,7 +2,7 @@ import asyncio
 
 from ainews.core.config.settings import settings
 from ainews.core.db.database import AsyncSessionLocal
-from ainews.core.services.crawler import CrawlerService
+from ainews.core.services.crawler_service import CrawlerService
 from ainews.core.utils.logging import logger
 
 

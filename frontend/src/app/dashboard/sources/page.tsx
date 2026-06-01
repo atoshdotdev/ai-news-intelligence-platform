@@ -9,16 +9,20 @@ import { SourceModal } from "@/features/sources/components/sources-modal";
 import { useSources } from "@/features/sources/hooks/use-sources";
 import { Source } from "@/features/sources/types";
 import { Pagination } from "@/components/pagination";
-// import { SearchBar } from "@/components/SearchBar";
+import { ConfirmDeleteModal } from "@/components/confirm-delete-modal";
+import { useDeleteSource } from "@/features/sources/hooks/use-delete-source";
 
 export default function SourcesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Source | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [sourceToDelete, setSourceToDelete] = useState<Source | null>(null);
+  const deleteSource = useDeleteSource();
 
   const [page, setPage] = useState(1);
   const [size] = useState(10);
 
-  const { data, isLoading, refetch } = useSources({
+  const { data, isLoading } = useSources({
     page,
     size,
   });
@@ -49,8 +53,6 @@ export default function SourcesPage() {
         </Button>
       </div>
 
-      {/* <SearchBar /> */}
-
       <div className="space-y-4">
         <SourcesTable
           sources={sources}
@@ -59,11 +61,17 @@ export default function SourcesPage() {
             setEditing(source);
             setOpen(true);
           }}
+          onDelete={(source) => {
+            setSourceToDelete(source);
+            setDeleteModalOpen(true);
+          }}
         />
 
         <Pagination
           page={page}
           totalPages={totalPages}
+          hasNext={metadata?.has_next ?? false}
+          hasPrev={metadata?.has_prev ?? false}
           onPageChange={setPage}
         />
       </div>
@@ -75,7 +83,21 @@ export default function SourcesPage() {
         onSuccess={() => {
           setOpen(false);
           setEditing(null);
-          refetch();
+        }}
+      />
+
+      <ConfirmDeleteModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        title="Delete Source"
+        description="Are you sure you want to delete this source? This action cannot be undone."
+        onConfirm={async () => {
+          if (!sourceToDelete) return;
+
+          await deleteSource.mutateAsync(sourceToDelete.id);
+
+          setDeleteModalOpen(false);
+          setSourceToDelete(null);
         }}
       />
     </div>

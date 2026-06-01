@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -45,21 +46,24 @@ export function SourceModal({
   } = useForm({
     resolver: zodResolver(sourceSchema),
     defaultValues: {
-      source_name: "",
-      source_url: "",
+      name: "",
+      url: "",
+      selector: "",
     },
   });
 
   useEffect(() => {
     if (initialData) {
       reset({
-        source_name: initialData.source_name,
-        source_url: initialData.source_url,
+        name: initialData.name,
+        url: initialData.url,
+        selector: initialData.selector,
       });
     } else {
       reset({
-        source_name: "",
-        source_url: "",
+        name: "",
+        url: "",
+        selector: "",
       });
     }
   }, [initialData, reset]);
@@ -87,23 +91,59 @@ export function SourceModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <Input placeholder="Source name" {...register("source_name")} />
-            {errors.source_name && (
-              <p className="text-sm text-red-500">
-                {errors.source_name.message}
-              </p>
-            )}
-          </div>
+          <Field data-invalid={!!errors.name}>
+            <FieldLabel htmlFor="input-field-name">
+              Source Name <span className="text-destructive">*</span>
+            </FieldLabel>
+            <Input
+              id="input-field-name"
+              type="text"
+              placeholder="Enter source name"
+              aria-invalid={!!errors.name}
+              {...register("name")}
+            />
 
-          <div>
-            <Input placeholder="Source URL" {...register("source_url")} />
-            {errors.source_url && (
-              <p className="text-sm text-red-500">
-                {errors.source_url.message}
-              </p>
+            {errors.name && (
+              <FieldDescription className="text-sm text-red-500">
+                {errors.name.message}
+              </FieldDescription>
             )}
-          </div>
+          </Field>
+
+          <Field data-invalid={!!errors.url}>
+            <FieldLabel htmlFor="input-field-url">
+              Source URL <span className="text-destructive">*</span>
+            </FieldLabel>
+            <Input
+              id="input-field-url"
+              type="text"
+              placeholder="Source URL"
+              aria-invalid={!!errors.url}
+              {...register("url")}
+            />
+
+            {errors.url && (
+              <FieldDescription className="text-sm text-red-500">
+                {errors.url.message}
+              </FieldDescription>
+            )}
+          </Field>
+
+          <Field data-invalid={!!errors.selector}>
+            <FieldLabel htmlFor="input-field-selector">Selector</FieldLabel>
+            <Input
+              id="input-field-selector"
+              type="text"
+              placeholder="Selector"
+              aria-invalid={!!errors.selector}
+              {...register("selector")}
+            />
+            {errors.selector && (
+              <FieldDescription className="text-sm text-red-500">
+                {errors.selector.message}
+              </FieldDescription>
+            )}
+          </Field>
 
           <div className="flex justify-end gap-2">
             <Button

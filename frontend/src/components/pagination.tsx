@@ -13,10 +13,18 @@ import {
 type Props = {
   page: number;
   totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
   onPageChange: (page: number) => void;
 };
 
-export function Pagination({ page, totalPages, onPageChange }: Props) {
+export function Pagination({
+  page,
+  totalPages,
+  hasNext,
+  hasPrev,
+  onPageChange,
+}: Props) {
   const getPages = () => {
     const pages: (number | "...")[] = [];
 
@@ -39,7 +47,7 @@ export function Pagination({ page, totalPages, onPageChange }: Props) {
         <PaginationItem>
           <PaginationPrevious
             onClick={() => onPageChange(Math.max(1, page - 1))}
-            className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+            className={!hasPrev ? "pointer-events-none opacity-50" : ""}
           />
         </PaginationItem>
 
@@ -61,9 +69,7 @@ export function Pagination({ page, totalPages, onPageChange }: Props) {
         <PaginationItem>
           <PaginationNext
             onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-            className={
-              page >= totalPages ? "pointer-events-none opacity-50" : ""
-            }
+            className={!hasNext ? "pointer-events-none opacity-50" : ""}
           />
         </PaginationItem>
       </PaginationContent>

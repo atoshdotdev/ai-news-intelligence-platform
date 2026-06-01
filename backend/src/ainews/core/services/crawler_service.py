@@ -1,6 +1,5 @@
 import hashlib
 from collections.abc import AsyncGenerator
-from types import SimpleNamespace
 from urllib.parse import (
     parse_qsl,
     urlencode,
@@ -10,8 +9,8 @@ from urllib.parse import (
 
 from ainews.core.config.settings import settings
 from ainews.core.db.models import Article
-from ainews.core.repositories.article import ArticleRepository
-from ainews.core.repositories.source import SourceRepository
+from ainews.core.repositories.article_repository import ArticleRepository
+from ainews.core.repositories.source_repository import SourceRepository
 from ainews.core.utils.logging import logger
 from crawl4ai import (
     BrowserConfig,
@@ -87,16 +86,7 @@ class CrawlerService:
         Executes a complete crawling + ingestion pipeline for all active sources.
         """
 
-        # sources = await self.source_repo.get_active_sources()
-        sources = [
-            SimpleNamespace(
-                id=1,
-                name="BBC Tech",
-                url="https://edition.cnn.com/politics",
-                blacklist_entries=["/video", "/live", "/audio", "/videos"],
-                selector=None,
-            )
-        ]
+        sources = await self.source_repo.get_active_sources(include_blacklisted=True)
 
         if not sources:
             logger.info("No active sources found.")
@@ -168,11 +158,10 @@ class CrawlerService:
                         and self.is_likely_article(link["href"])
                     ]
 
-                    logger.info(raw_links)
-
                     url_candidates = {}
                     blacklist = [
-                        entry.strip().lower() for entry in source.blacklist_entries
+                        entry.url_fragment.strip().lower()
+                        for entry in source.blacklist_entries
                     ]
 
                     for raw_url in raw_links:

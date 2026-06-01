@@ -1,3 +1,5 @@
+from typing import List
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -18,6 +20,15 @@ class Settings(BaseSettings):
         default=1800,
         description="The number of seconds the web crawler should sleep between cycles",
     )
+    cors_allowed_origins: List[str] = [
+        "https://dpn.grabit.io",
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ]
+    cors_allow_credentials: bool = True
+    cors_allow_methods: List[str] = ["*"]
+    cors_allow_headers: List[str] = ["*"]
+    cors_expose_headers: List[str] = ["Content-Disposition"]
 
 
 settings = Settings()

@@ -1,13 +1,9 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Inter, Noto_Serif } from "next/font/google";
+import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Providers } from "./providers";
-
-const notoSerifHeading = Noto_Serif({
-  subsets: ["latin"],
-  variable: "--font-heading",
-});
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -35,10 +31,10 @@ export default function RootLayout({
         geistMono.variable,
         "font-sans",
         inter.variable,
-        notoSerifHeading.variable,
       )}
     >
       <body className="min-h-full flex flex-col">
+        <Toaster />
         <Providers>{children}</Providers>
       </body>
     </html>

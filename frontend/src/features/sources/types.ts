@@ -1,15 +1,13 @@
 export type Source = {
   id: number;
-  source_name: string;
-  source_url: string;
-  selector?: string | null;
-  created_at?: string;
-  updated_at?: string;
+  name: string;
+  url: string;
+  selector?: string;
 };
 
 export type CreateSourceDTO = {
-  source_name: string;
-  source_url: string;
+  name: string;
+  url: string;
   selector?: string;
 };
 
@@ -18,7 +16,6 @@ export type UpdateSourceDTO = CreateSourceDTO;
 export type UseSourcesParams = {
   page?: number;
   size?: number;
-  search?: string;
 };
 
 export type SourcesResponse = {
