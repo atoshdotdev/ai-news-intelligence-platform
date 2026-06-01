@@ -2,30 +2,33 @@ services:
   api:
     build:
       context: ./backend
-    container_name: api
+    container_name: ainews-api
     restart: unless-stopped
     ports:
       - "8000:8000"
-    command: ["fastapi", "dev", "--host", "0.0.0.0", "src/api/main.py"]
+    command: ["uv", "run", "fastapi", "dev", "--host", "0.0.0.0"]
     depends_on:
       db:
         condition: service_healthy
     env_file:
       - .env
+    volumes:
+      - ./backend/alembic:/app/alembic
     develop:
       watch:
         - action: sync
           path: ./backend
           target: /app
           ignore:
-            - .venv/
+            - .venv
+            - alembic
         - action: rebuild
           path: ./backend/pyproject.toml
 
   web:
     build:
       context: ./frontend
-    container_name: web
+    container_name: ainews-web
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -37,14 +40,48 @@ services:
           path: ./frontend
           target: /app
           ignore:
-            - node_modules/
-            - .next/
+            - node_modules
+            - .next
         - action: rebuild
           path: ./frontend/package.json
 
+  web-scraper:
+    image: unclecode/crawl4ai:0.8.6
+    container_name: ainews-web-scraper
+    restart: unless-stopped
+    ports:
+      - "11235:11235"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+
+  worker1:
+    build:
+      context: ./backend
+    container_name: ainews-scraper-worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    command: ["uv", "run", "python", "-m", "ainews.workers.crawler.main"]
+    develop:
+      watch:
+        - action: sync
+          path: ./backend
+          target: /app
+          ignore:
+            - .venv
+            - alembic
+        - action: rebuild
+          path: ./backend/pyproject.toml
+
   db:
     image: pgvector/pgvector:pg18
-    container_name: db
+    container_name: ainews-db
     volumes:
       - db_data:/var/lib/postgresql
     env_file:
@@ -59,7 +96,7 @@ services:
 
   # ollama:
   #   image: ollama/ollama:0.13.0
-  #   container_name: ollama
+  #   container_name: ainews-ollama
   #   restart: unless-stopped
   #   ports:
   #     - "127.0.0.1:11434:11434"
