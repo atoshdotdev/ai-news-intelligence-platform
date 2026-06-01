@@ -6,6 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ExternalLinkIcon, PencilIcon, TrashIcon } from "lucide-react";
 import { type Source } from "@/features/sources/types";
@@ -24,6 +25,8 @@ export function SourcesTable({
   onEdit,
   onDelete,
 }: SourcesTableProps) {
+  const router = useRouter();
+
   if (loading) {
     return (
       <div className="flex justify-center text-center py-10">
@@ -48,7 +51,7 @@ export function SourcesTable({
             <TableHead>Name</TableHead>
             <TableHead>URL</TableHead>
             <TableHead>Selector</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -61,7 +64,7 @@ export function SourcesTable({
                 <a
                   href={s.url}
                   target="_blank"
-                  className="flex items-center gap-1 hover:underline"
+                  className="w-fit flex items-center gap-1 hover:underline"
                 >
                   {s.url}
                   <ExternalLinkIcon className="size-3" />
@@ -72,10 +75,19 @@ export function SourcesTable({
                 {s.selector}
               </TableCell>
 
-              <TableCell className="text-right">
+              <TableCell className="flex gap-2 justify-center">
+                <Button
+                  variant="outline"
+                  size="default"
+                  onClick={() => router.push(`/dashboard/sources/${s.id}`)}
+                >
+                  Manage
+                </Button>
+
                 <Button variant="ghost" size="icon" onClick={() => onEdit(s)}>
                   <PencilIcon className="size-4" />
                 </Button>
+
                 <Button
                   variant="destructive"
                   size="icon"

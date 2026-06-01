@@ -37,6 +37,12 @@ class SourceRepository:
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
+    async def get_by_id(self, source_id: UUID) -> Optional[Source]:
+        """Fetches a source by its ID"""
+        stmt = select(Source).where(Source.id == source_id, Source.deleted_at.is_(None))
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def create(self, data: SourceCreate) -> Source:
         """Creates a new source record in the database."""
         db_source = Source(**data.model_dump())

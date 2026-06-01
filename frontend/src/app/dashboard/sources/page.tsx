@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 
 import { SourcesTable } from "@/features/sources/components/sources-table";
 import { SourceModal } from "@/features/sources/components/sources-modal";
-import { useSources } from "@/features/sources/hooks/use-sources";
+import {
+  useSources,
+  useDeleteSource,
+} from "@/features/sources/hooks/use-sources";
 import { Source } from "@/features/sources/types";
 import { Pagination } from "@/components/pagination";
 import { ConfirmDeleteModal } from "@/components/confirm-delete-modal";
-import { useDeleteSource } from "@/features/sources/hooks/use-delete-source";
 
 export default function SourcesPage() {
   const [open, setOpen] = useState(false);
@@ -48,7 +50,7 @@ export default function SourcesPage() {
             setOpen(true);
           }}
         >
-          <Plus className="size-4 mr-2" />
+          <PlusIcon />
           Add Source
         </Button>
       </div>

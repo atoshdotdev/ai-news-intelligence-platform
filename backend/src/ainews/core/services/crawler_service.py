@@ -172,8 +172,12 @@ class CrawlerService:
 
                         canonical_url = self.canonicalize_url(raw_url)
 
+                        path = urlparse(canonical_url).path.lower()
+
                         if blacklist:
-                            if any(fragment in canonical_url for fragment in blacklist):
+                            if any(
+                                fragment in path.split("/") for fragment in blacklist
+                            ):
                                 logger.info(
                                     f"Excluding blacklisted URL: {canonical_url}"
                                 )

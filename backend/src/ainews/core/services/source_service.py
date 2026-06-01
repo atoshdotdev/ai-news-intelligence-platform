@@ -33,6 +33,12 @@ class SourceService:
 
         return PaginatedSourcesResponse(data=sources, metadata=metadata)
 
+    async def get_source_by_id(self, source_id: UUID) -> SourceRead | None:
+        source = await self.repo.get_by_id(source_id)
+        if source:
+            return SourceRead.model_validate(source)
+        return None
+
     async def create_source(self, source_data: SourceCreate):
         return await self.repo.create(source_data)
 

@@ -3,6 +3,7 @@ import type {
   CreateSourceDTO,
   UseSourcesParams,
   SourcesResponse,
+  Source,
 } from "@/features/sources/types";
 
 export const sourcesApi = {
@@ -13,7 +14,7 @@ export const sourcesApi = {
       params,
     }),
 
-  get: (id: number) =>
+  get: (id: string): Promise<Source> =>
     request({
       url: `/sources/${id}`,
       method: "GET",
@@ -26,14 +27,14 @@ export const sourcesApi = {
       data,
     }),
 
-  update: (id: number, data: CreateSourceDTO) =>
+  update: (id: string, data: CreateSourceDTO) =>
     request({
       url: `/sources/${id}`,
       method: "PUT",
       data,
     }),
 
-  remove: (id: number) =>
+  remove: (id: string) =>
     request({
       url: `/sources/${id}`,
       method: "DELETE",

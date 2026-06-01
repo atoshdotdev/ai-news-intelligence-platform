@@ -1,7 +1,9 @@
 from uuid import UUID
 
 from ainews.core.db.models import SourceBlacklist
+from fastapi import HTTPException, status
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -16,8 +18,18 @@ class BlacklistRepository:
 
     async def add_entry(self, source_id: UUID, fragment: str):
         entry = SourceBlacklist(source_id=source_id, url_fragment=fragment)
+
         self.session.add(entry)
-        await self.session.commit()
+
+        try:
+            await self.session.commit()
+        except IntegrityError:
+            await self.session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Blacklist entry already exists",
+            )
+
         await self.session.refresh(entry)
         return entry
 

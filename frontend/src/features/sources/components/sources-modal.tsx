@@ -7,18 +7,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
 import {
   type SourceFormValues,
   sourceSchema,
 } from "@/features/sources/schemas/source.schema";
-import { useCreateSource } from "@/features/sources/hooks/use-create-source";
-import { useUpdateSource } from "@/features/sources/hooks/use-update-source";
-import { Source } from "@/features/sources/types";
+
+import {
+  useCreateSource,
+  useUpdateSource,
+} from "@/features/sources/hooks/use-sources";
+
+import type { Source } from "@/features/sources/types";
 
 type SourceModalProps = {
   open: boolean;
@@ -43,7 +50,7 @@ export function SourceModal({
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm({
+  } = useForm<SourceFormValues>({
     resolver: zodResolver(sourceSchema),
     defaultValues: {
       name: "",
@@ -53,23 +60,20 @@ export function SourceModal({
   });
 
   useEffect(() => {
-    if (initialData) {
-      reset({
-        name: initialData.name,
-        url: initialData.url,
-        selector: initialData.selector,
-      });
-    } else {
-      reset({
-        name: "",
-        url: "",
-        selector: "",
-      });
+    if (!initialData) {
+      reset({ name: "", url: "", selector: "" });
+      return;
     }
+
+    reset({
+      name: initialData.name,
+      url: initialData.url,
+      selector: initialData.selector ?? "",
+    });
   }, [initialData, reset]);
 
   const onSubmit = async (data: SourceFormValues) => {
-    if (isEdit) {
+    if (isEdit && initialData) {
       await updateSource.mutateAsync({
         id: initialData.id,
         data,
@@ -92,9 +96,7 @@ export function SourceModal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <Field data-invalid={!!errors.name}>
-            <FieldLabel htmlFor="input-field-name">
-              Source Name <span className="text-destructive">*</span>
-            </FieldLabel>
+            <FieldLabel>Source Name *</FieldLabel>
             <Input
               id="input-field-name"
               type="text"
@@ -102,44 +104,40 @@ export function SourceModal({
               aria-invalid={!!errors.name}
               {...register("name")}
             />
-
             {errors.name && (
-              <FieldDescription className="text-sm text-red-500">
+              <FieldDescription className="text-red-500">
                 {errors.name.message}
               </FieldDescription>
             )}
           </Field>
 
           <Field data-invalid={!!errors.url}>
-            <FieldLabel htmlFor="input-field-url">
-              Source URL <span className="text-destructive">*</span>
-            </FieldLabel>
+            <FieldLabel>Source URL *</FieldLabel>
             <Input
               id="input-field-url"
               type="text"
-              placeholder="Source URL"
+              placeholder="Enter source URL"
               aria-invalid={!!errors.url}
               {...register("url")}
             />
-
             {errors.url && (
-              <FieldDescription className="text-sm text-red-500">
+              <FieldDescription className="text-red-500">
                 {errors.url.message}
               </FieldDescription>
             )}
           </Field>
 
           <Field data-invalid={!!errors.selector}>
-            <FieldLabel htmlFor="input-field-selector">Selector</FieldLabel>
+            <FieldLabel>Selector</FieldLabel>
             <Input
               id="input-field-selector"
               type="text"
-              placeholder="Selector"
+              placeholder="Enter selector"
               aria-invalid={!!errors.selector}
               {...register("selector")}
             />
             {errors.selector && (
-              <FieldDescription className="text-sm text-red-500">
+              <FieldDescription className="text-red-500">
                 {errors.selector.message}
               </FieldDescription>
             )}

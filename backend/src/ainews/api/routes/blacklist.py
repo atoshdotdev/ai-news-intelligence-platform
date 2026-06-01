@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Response, status
 
 from ainews.core.db.database import get_session
 from ainews.core.schemas.source_schemas import (
@@ -38,7 +38,5 @@ async def add_blacklist(
 async def remove_blacklist(
     entry_id: UUID, service: BlacklistService = Depends(get_blacklist_service)
 ):
-    success = await service.remove_from_blacklist(entry_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Blacklist entry not found")
-    return None
+    await service.remove_from_blacklist(entry_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

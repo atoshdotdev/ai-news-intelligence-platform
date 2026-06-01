@@ -1,5 +1,5 @@
 export type Source = {
-  id: number;
+  id: string;
   name: string;
   url: string;
   selector?: string;
@@ -28,4 +28,14 @@ export type SourcesResponse = {
     has_next: boolean;
     has_prev: boolean;
   };
+};
+
+export type BlacklistEntry = {
+  id: string;
+  url_fragment: string;
+  source_id: string;
+};
+
+export type CreateBlacklistDTO = {
+  url_fragment: string;
 };

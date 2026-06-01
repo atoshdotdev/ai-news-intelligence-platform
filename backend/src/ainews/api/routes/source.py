@@ -35,6 +35,16 @@ async def create_source(
     return await service.create_source(source_data)
 
 
+@router.get("/{source_id}", response_model=SourceRead)
+async def read_source(
+    source_id: UUID, service: SourceService = Depends(get_source_service)
+):
+    source = await service.get_source_by_id(source_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    return source
+
+
 @router.put("/{source_id}", response_model=SourceRead)
 async def update_source(
     source_id: UUID,

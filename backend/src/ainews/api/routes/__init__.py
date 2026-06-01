@@ -6,6 +6,4 @@ from ainews.api.routes.source import router as source_router
 router = APIRouter()
 
 router.include_router(source_router, prefix="/sources", tags=["sources"])
-router.include_router(
-    blacklist_router, prefix="/source-blacklist", tags=["source_blacklist"]
-)
+router.include_router(blacklist_router, prefix="/sources", tags=["source_blacklist"])
