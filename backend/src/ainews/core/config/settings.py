@@ -20,6 +20,10 @@ class Settings(BaseSettings):
         default=1800,
         description="The number of seconds the web crawler should sleep between cycles",
     )
+    processing_sleep_seconds: int = Field(
+        default=1800,
+        description="The number of seconds the processing worker should sleep between cycles",
+    )
     cors_allowed_origins: List[str] = [
         "https://dpn.grabit.io",
         "http://localhost:3000",

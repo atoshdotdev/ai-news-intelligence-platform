@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from pgvector.sqlalchemy import VECTOR
 from sqlalchemy import DateTime, ForeignKey, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,5 +32,6 @@ class Article(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    embedding: Mapped[list[float] | None] = mapped_column(VECTOR(1024), nullable=True)
 
     source: Mapped["Source"] = relationship(back_populates="articles")
