@@ -6,7 +6,7 @@ from ainews.workers.processor.pipeline import ProcessingPipeline
 
 
 def build_pipeline(session, ai_config):
-    ollama = OllamaClient(settings.ollama_url, ai_config)
+    ollama = OllamaClient(settings.ollama_host, ai_config)
 
     article_repo = ArticleRepository(session)
 
