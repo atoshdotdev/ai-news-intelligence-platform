@@ -21,8 +21,12 @@ class OllamaClient:
 
         return response.embeddings
 
-    async def chat(self, messages: list, model: str | None = None):
-        response = await self.client.chat(
+    async def chat_stream(
+        self,
+        messages: list,
+        model: str | None = None,
+    ):
+        stream = await self.client.chat(
             model=model or self.config.chat.model,
             messages=messages,
             options={
@@ -30,6 +34,8 @@ class OllamaClient:
                 "top_p": self.config.chat.top_p,
                 "num_predict": self.config.chat.max_tokens,
             },
+            stream=True,
         )
 
-        return response["message"]["content"]
+        async for chunk in stream:
+            yield chunk["message"]["content"]

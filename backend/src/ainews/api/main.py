@@ -1,16 +1,29 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from ainews.api.routes import router as api_router
+from ainews.core.clients.ollama_client import OllamaClient
+from ainews.core.config.ai_models import AIConfig
 from ainews.core.config.settings import settings
 from ainews.core.utils.logger import logger
 
-app = FastAPI(
-    title="AINEWS API",
-    version="0.1.0",
-)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.ai_config = AIConfig()
+    app.state.ollama = OllamaClient(
+        base_url=settings.ollama_host,
+        config=app.state.ai_config,
+    )
+
+    yield
+
+
+app = FastAPI(title="AINEWS API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

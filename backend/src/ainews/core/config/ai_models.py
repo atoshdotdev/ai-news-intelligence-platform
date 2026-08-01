@@ -6,7 +6,7 @@ class ChatConfig:
     model: str = "llama3.1:8b"
     temperature: float = 0.7
     top_p: float = 0.9
-    max_tokens: int = 1024
+    max_tokens: int = 3072
 
 
 @dataclass
