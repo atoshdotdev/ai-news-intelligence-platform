@@ -9,8 +9,9 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://postgres:postgres@db:5432/ainews",
         description="The URL for the database connection",
     )
-    ollama_url: str = Field(
-        default="http://ollama:11434", description="The URL for the Ollama API"
+    ollama_host: str = Field(
+        default="http://host.docker.internal:11434",
+        description="The URL for the Ollama API",
     )
     web_crawler_url: str = Field(
         default="http://web-scraper:11235",

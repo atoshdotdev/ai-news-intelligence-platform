@@ -52,3 +52,18 @@ class ArticleRepository:
         )
 
         await self.session.commit()
+
+    async def search_similar(
+        self,
+        query_embedding: Sequence[float],
+        limit: int = 5,
+    ) -> list[Article]:
+        stmt = (
+            select(Article)
+            .where(Article.embedding.is_not(None))
+            .order_by(Article.embedding.cosine_distance(query_embedding))
+            .limit(limit)
+        )
+
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
