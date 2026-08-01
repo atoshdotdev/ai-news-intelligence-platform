@@ -25,7 +25,6 @@ class Settings(BaseSettings):
         description="The number of seconds the processing worker should sleep between cycles",
     )
     cors_allowed_origins: List[str] = [
-        "https://dpn.grabit.io",
         "http://localhost:3000",
         "http://localhost:5173",
     ]

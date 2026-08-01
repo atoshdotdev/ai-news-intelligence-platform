@@ -3,7 +3,7 @@ import asyncio
 from ainews.core.config.settings import settings
 from ainews.core.db.database import AsyncSessionLocal
 from ainews.core.services.crawler_service import CrawlerService
-from ainews.core.utils.logging import logger
+from ainews.core.utils.logger import logger
 
 
 async def main_loop():

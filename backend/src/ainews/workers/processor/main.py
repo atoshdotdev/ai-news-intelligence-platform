@@ -3,7 +3,7 @@ import asyncio
 from ainews.core.config.ai_models import AIConfig
 from ainews.core.config.settings import settings
 from ainews.core.db.database import AsyncSessionLocal
-from ainews.core.utils.logging import logger
+from ainews.core.utils.logger import logger
 from ainews.workers.processor.factory import build_pipeline
 
 ai_config = AIConfig()

@@ -4,7 +4,7 @@ import sys
 
 def setup_logging(module_name: str = "ainews") -> logging.Logger:
     """
-    Configures a Docker-friendly centralized logger that outputs
+    Configures a centralized logger that outputs
     structured text to stdout.
     """
     logger = logging.getLogger(module_name)

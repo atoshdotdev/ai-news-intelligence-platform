@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass
 class ChatConfig:
-    model: str = "qwen3:4b"
+    model: str = "llama3.1:8b"
     temperature: float = 0.7
     top_p: float = 0.9
     max_tokens: int = 1024

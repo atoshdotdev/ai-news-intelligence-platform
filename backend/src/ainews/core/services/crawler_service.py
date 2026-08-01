@@ -11,7 +11,7 @@ from ainews.core.config.settings import settings
 from ainews.core.db.models import Article
 from ainews.core.repositories.article_repository import ArticleRepository
 from ainews.core.repositories.source_repository import SourceRepository
-from ainews.core.utils.logging import logger
+from ainews.core.utils.logger import logger
 from crawl4ai import (
     BrowserConfig,
     CacheMode,

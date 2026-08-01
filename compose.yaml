@@ -79,27 +79,27 @@ services:
         - action: rebuild
           path: ./backend/pyproject.toml
 
-  worker2:
-    build:
-      context: ./backend
-    container_name: ainews-processing-worker
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    env_file:
-      - .env
-    command: ["uv", "run", "python", "-m", "ainews.workers.processor.main"]
-    develop:
-      watch:
-        - action: sync
-          path: ./backend
-          target: /app
-          ignore:
-            - .venv
-            - alembic
-        - action: rebuild
-          path: ./backend/pyproject.toml
+  # worker2:
+  #   build:
+  #     context: ./backend
+  #   container_name: ainews-processing-worker
+  #   restart: unless-stopped
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   env_file:
+  #     - .env
+  #   command: ["uv", "run", "python", "-m", "ainews.workers.processor.main"]
+  #   develop:
+  #     watch:
+  #       - action: sync
+  #         path: ./backend
+  #         target: /app
+  #         ignore:
+  #           - .venv
+  #           - alembic
+  #       - action: rebuild
+  #         path: ./backend/pyproject.toml
 
   db:
     image: pgvector/pgvector:pg18
@@ -116,15 +116,15 @@ services:
       timeout: 5s
       retries: 5
 
-  ollama:
-    image: ollama/ollama:0.30.3
-    container_name: ainews-ollama
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:11434:11434"
-    volumes:
-      - ollama:/root/.ollama
+  # ollama:
+  #   image: ollama/ollama:0.30.3
+  #   container_name: ainews-ollama
+  #   restart: unless-stopped
+  #   ports:
+  #     - "127.0.0.1:11434:11434"
+  #   volumes:
+  #     - ollama:/root/.ollama
 
 volumes:
   db_data:
-  ollama:
+  # ollama:

@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 
 from ainews.api.routes import router as api_router
 from ainews.core.config.settings import settings
-from ainews.core.utils.logging import logger
+from ainews.core.utils.logger import logger
 
 app = FastAPI(
     title="AINEWS API",
