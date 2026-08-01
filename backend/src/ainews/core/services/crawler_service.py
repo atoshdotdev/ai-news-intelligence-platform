@@ -18,7 +18,9 @@ from crawl4ai import (
     CrawlerRunConfig,
     CrawlResult,
 )
+from crawl4ai.content_filter_strategy import PruningContentFilter
 from crawl4ai.docker_client import Crawl4aiDockerClient
+from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -77,9 +79,31 @@ class CrawlerService:
 
         return canonical
 
+    def is_valid_article(
+        self,
+        title: str,
+        content: str,
+    ) -> bool:
+        """
+        Filters crawler garbage, error pages, and low-content pages.
+        """
+
+        if not title or len(title.strip()) < 10:
+            return False
+
+        if not content or len(content.strip()) < 500:
+            return False
+
+        words = content.split()
+
+        return not len(words) < 100
+
     def is_likely_article(self, url: str) -> bool:
-        path = urlparse(url).path
-        return len(path.split("/")) > 3
+        path = urlparse(url).path.lower()
+
+        segments = [segment for segment in path.split("/") if segment]
+
+        return not len(segments) < 2
 
     async def run(self):
         """
@@ -174,14 +198,11 @@ class CrawlerService:
 
                         path = urlparse(canonical_url).path.lower()
 
-                        if blacklist:
-                            if any(
-                                fragment in path.split("/") for fragment in blacklist
-                            ):
-                                logger.info(
-                                    f"Excluding blacklisted URL: {canonical_url}"
-                                )
-                                continue
+                        if blacklist and any(
+                            fragment in path.split("/") for fragment in blacklist
+                        ):
+                            logger.info(f"Excluding blacklisted URL: {canonical_url}")
+                            continue
 
                         url_hash = hashlib.sha256(canonical_url.encode()).hexdigest()
 
@@ -239,10 +260,16 @@ class CrawlerService:
                             "aside",
                             "form",
                         ],
-                        word_count_threshold=50,
+                        word_count_threshold=100,
+                        markdown_generator=DefaultMarkdownGenerator(
+                            content_filter=PruningContentFilter(
+                                threshold=0.6,
+                                threshold_type="dynamic",
+                                min_word_threshold=10,
+                            ),
+                            options={"ignore_links": True},
+                        ),
                     )
-
-                    all_results = []
 
                     for i in range(0, len(article_urls), self.BATCH_SIZE):
                         batch = article_urls[i : i + self.BATCH_SIZE]
@@ -255,118 +282,112 @@ class CrawlerService:
                             )
 
                             if isinstance(batch_results, CrawlResult):
-                                all_results.append(batch_results)
-
-                            elif isinstance(batch_results, list):
-                                all_results.extend(batch_results)
+                                batch_results = [batch_results]
 
                             elif isinstance(batch_results, AsyncGenerator):
-                                all_results.extend([r async for r in batch_results])
+                                batch_results = [
+                                    result async for result in batch_results
+                                ]
 
-                            else:
+                            elif not isinstance(batch_results, list):
                                 logger.warning("Unknown crawl result type in batch")
                                 continue
 
-                        except Exception as e:
-                            logger.exception(f"Batch crawl failed: {str(e)}")
-                            continue
+                            articles_to_create = []
 
-                    article_results = [
-                        r for r in all_results if isinstance(r, CrawlResult)
-                    ]
+                            for article_result in batch_results:
+                                try:
+                                    if not article_result.success:
+                                        logger.warning(
+                                            f"Failed article crawl: "
+                                            f"{article_result.url}"
+                                        )
+                                        continue
 
-                    if not article_results:
-                        logger.warning(
-                            f"No article crawl results returned for {source.name}"
-                        )
-                        continue
-
-                    articles_to_create = []
-
-                    for article_result in article_results:
-                        try:
-                            if not article_result.success:
-                                logger.warning(
-                                    f"Failed article crawl: "
-                                    f"{article_result.url} "
-                                    f"-> {article_result.error_message}"
-                                )
-                                continue
-
-                            canonical_url = self.canonicalize_url(article_result.url)
-                            url_hash = url_to_hash.get(article_result.url)
-
-                            if not url_hash:
-                                url_hash = hashlib.sha256(
-                                    canonical_url.encode()
-                                ).hexdigest()
-
-                            title = (
-                                article_result.metadata.get("title")
-                                if article_result.metadata
-                                else None
-                            )
-
-                            title = title.strip() if title else "Untitled"
-
-                            markdown_content = (article_result.markdown or "").strip()
-
-                            meta_description = (
-                                article_result.metadata.get("description")
-                                if article_result.metadata
-                                else None
-                            )
-
-                            extracted_content = (
-                                markdown_content or meta_description or ""
-                            ).strip()
-
-                            image_url = None
-
-                            if article_result.metadata:
-                                image_url = (
-                                    article_result.metadata.get("og:image")
-                                    or article_result.metadata.get(
-                                        "og:image:secure_url"
+                                    canonical_url = self.canonicalize_url(
+                                        article_result.url
                                     )
-                                    or article_result.metadata.get("image")
+
+                                    url_hash = url_to_hash.get(article_result.url)
+
+                                    if not url_hash:
+                                        url_hash = hashlib.sha256(
+                                            canonical_url.encode()
+                                        ).hexdigest()
+
+                                    title = (
+                                        article_result.metadata.get("title")
+                                        if article_result.metadata
+                                        else None
+                                    )
+
+                                    title = title.strip() if title else "Untitled"
+
+                                    markdown_content = (
+                                        article_result.markdown._markdown_result.fit_markdown
+                                        if article_result.markdown
+                                        else None
+                                    )
+
+                                    meta_description = (
+                                        article_result.metadata.get("description")
+                                        if article_result.metadata
+                                        else None
+                                    )
+
+                                    extracted_content = (
+                                        markdown_content or meta_description or ""
+                                    ).strip()
+
+                                    if not self.is_valid_article(
+                                        title,
+                                        extracted_content,
+                                    ):
+                                        logger.warning(
+                                            f"Rejected low quality article: "
+                                            f"{canonical_url}"
+                                        )
+                                        continue
+
+                                    image_url = None
+
+                                    if article_result.metadata:
+                                        image_url = (
+                                            article_result.metadata.get("og:image")
+                                            or article_result.metadata.get(
+                                                "og:image:secure_url"
+                                            )
+                                            or article_result.metadata.get("image")
+                                        )
+
+                                    articles_to_create.append(
+                                        Article(
+                                            url=canonical_url,
+                                            url_hash=url_hash,
+                                            title=title,
+                                            content=extracted_content,
+                                            source_id=source.id,
+                                            image_url=image_url,
+                                        )
+                                    )
+
+                                except Exception as e:
+                                    logger.exception(
+                                        f"Error processing article "
+                                        f"{article_result.url}: {e!s}"
+                                    )
+
+                            if articles_to_create:
+                                await self.article_repo.create_many(articles_to_create)
+
+                                logger.info(
+                                    f"Inserted {len(articles_to_create)} "
+                                    f"articles for source {source.name}"
                                 )
-
-                            if not extracted_content:
-                                logger.warning(
-                                    f"Skipping empty article: {canonical_url}"
-                                )
-                                continue
-
-                            article = Article(
-                                url=canonical_url,
-                                url_hash=url_hash,
-                                title=title,
-                                content=extracted_content,
-                                source_id=source.id,
-                                image_url=image_url,
-                            )
-
-                            articles_to_create.append(article)
-
-                            logger.info(f"Prepared article: {title}")
 
                         except Exception as e:
-                            logger.exception(
-                                f"Error processing article "
-                                f"{article_result.url}: {str(e)}"
-                            )
-
-                    if not articles_to_create:
-                        logger.info(f"No valid articles extracted for {source.name}")
-                        continue
-
-                    await self.article_repo.create_many(articles_to_create)
-
-                    logger.info(
-                        f"Inserted {len(articles_to_create)} "
-                        f"articles for source: {source.name}"
-                    )
+                            logger.exception(f"Batch crawl failed: {e!s}")
+                            continue
 
                 except Exception as e:
                     logger.error(
