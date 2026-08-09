@@ -11,7 +11,7 @@ class ChatConfig:
 
 @dataclass
 class EmbeddingConfig:
-    model: str = "qwen3-embedding:0.6b"
+    model: str = "BAAI/bge-m3"
     dimensions: int = 1024
     batch_size: int = 32
     normalize: bool = True

@@ -1,3 +1,4 @@
 from .article import Article as Article
+from .article_chunk import ArticleChunk as ArticleChunk
 from .source import Source as Source
 from .source_blacklist import SourceBlacklist as SourceBlacklist

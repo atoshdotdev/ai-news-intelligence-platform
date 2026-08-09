@@ -4,26 +4,34 @@ from ainews.core.config.ai_models import AIConfig
 from ainews.core.config.settings import settings
 from ainews.core.db.database import AsyncSessionLocal
 from ainews.core.utils.logger import logger
-from ainews.workers.processor.factory import build_pipeline
+from ainews.workers.processor.factory import build_pipeline, build_services
 
 ai_config = AIConfig()
 
 
 async def main_loop():
     logger.info("Initializing Processing Background Worker...")
-    CYCLE_SLEEP_SECONDS = settings.processing_sleep_seconds
+
+    cycle_sleep_seconds = settings.processing_sleep_seconds
+
+    services = build_services(ai_config)
 
     while True:
-        async with AsyncSessionLocal() as session:
-            pipeline = build_pipeline(
-                session=session,
-                ai_config=ai_config,
-            )
+        try:
+            async with AsyncSessionLocal() as session:
+                pipeline = build_pipeline(
+                    session=session,
+                    services=services,
+                )
 
-            await pipeline.run()
+                await pipeline.run()
 
-        logger.info(f"Cycle completed. Sleeping for {CYCLE_SLEEP_SECONDS} seconds.")
-        await asyncio.sleep(CYCLE_SLEEP_SECONDS)
+        except Exception:
+            logger.exception("Processing cycle failed.")
+
+        logger.info(f"Cycle completed. Sleeping for {cycle_sleep_seconds} seconds.")
+
+        await asyncio.sleep(cycle_sleep_seconds)
 
 
 if __name__ == "__main__":

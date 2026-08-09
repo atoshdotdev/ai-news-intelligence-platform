@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ainews.core.db.base import Base
 
 if TYPE_CHECKING:
-    from ainews.core.db.models import Source
+    from ainews.core.db.models import ArticleChunk, Source
 
 
 class Article(Base):
@@ -35,3 +35,7 @@ class Article(Base):
     embedding: Mapped[list[float] | None] = mapped_column(VECTOR(1024), nullable=True)
 
     source: Mapped["Source"] = relationship(back_populates="articles")
+    chunks: Mapped[list["ArticleChunk"]] = relationship(
+        back_populates="article",
+        cascade="all, delete-orphan",
+    )

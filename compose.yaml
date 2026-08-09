@@ -2,6 +2,8 @@ services:
   api:
     build:
       context: ./backend
+      args:
+        UV_GROUP: api
     container_name: ainews-api
     restart: unless-stopped
     ports:
@@ -12,8 +14,18 @@ services:
         condition: service_healthy
     env_file:
       - .env
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     volumes:
       - ./backend/alembic:/app/alembic
+      - huggingface_cache:/cache/huggingface
+    environment:
+      HF_HOME: /cache/huggingface
     develop:
       watch:
         - action: sync
@@ -45,51 +57,32 @@ services:
         - action: rebuild
           path: ./frontend/package.json
 
-  web-scraper:
-    image: unclecode/crawl4ai:0.8.6
-    container_name: ainews-web-scraper
-    restart: unless-stopped
-    ports:
-      - "11235:11235"
-    depends_on:
-      db:
-        condition: service_healthy
-    env_file:
-      - .env
+  # web-scraper:
+  #   image: unclecode/crawl4ai:0.8.6
+  #   container_name: ainews-web-scraper
+  #   restart: unless-stopped
+  #   ports:
+  #     - "11235:11235"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   env_file:
+  #     - .env
 
-  worker1:
-    build:
-      context: ./backend
-    container_name: ainews-scraper-worker
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    env_file:
-      - .env
-    command: ["uv", "run", "python", "-m", "ainews.workers.crawler.main"]
-    develop:
-      watch:
-        - action: sync
-          path: ./backend
-          target: /app
-          ignore:
-            - .venv
-            - alembic
-        - action: rebuild
-          path: ./backend/pyproject.toml
-
-  # worker2:
+  # worker1:
   #   build:
   #     context: ./backend
-  #   container_name: ainews-processing-worker
+  #     args:
+  #       UV_GROUP: crawler
+  #   container_name: ainews-scraper-worker
   #   restart: unless-stopped
   #   depends_on:
   #     db:
   #       condition: service_healthy
   #   env_file:
   #     - .env
-  #   command: ["uv", "run", "python", "-m", "ainews.workers.processor.main"]
+  #   command:
+  #     ["uv", "run", "python", "-m", "ainews.workers.crawler.main"]
   #   develop:
   #     watch:
   #       - action: sync
@@ -100,6 +93,41 @@ services:
   #           - alembic
   #       - action: rebuild
   #         path: ./backend/pyproject.toml
+
+  worker2:
+    build:
+      context: ./backend
+      args:
+        UV_GROUP: processing
+    container_name: ainews-processing-worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    command: ["uv", "run", "python", "-m", "ainews.workers.processor.main"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - huggingface_cache:/cache/huggingface
+    environment:
+      HF_HOME: /cache/huggingface
+    develop:
+      watch:
+        - action: sync
+          path: ./backend
+          target: /app
+          ignore:
+            - .venv
+            - alembic
+        - action: rebuild
+          path: ./backend/pyproject.toml
 
   db:
     image: pgvector/pgvector:pg18
@@ -116,15 +144,23 @@ services:
       timeout: 5s
       retries: 5
 
-  # ollama:
-  #   image: ollama/ollama:0.30.3
-  #   container_name: ainews-ollama
-  #   restart: unless-stopped
-  #   ports:
-  #     - "127.0.0.1:11434:11434"
-  #   volumes:
-  #     - ollama:/root/.ollama
+  ollama:
+    image: ollama/ollama:0.30.3
+    container_name: ainews-ollama
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
 volumes:
   db_data:
-  # ollama:
+  ollama:
+  huggingface_cache:
