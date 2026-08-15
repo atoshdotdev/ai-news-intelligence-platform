@@ -1,4 +1,6 @@
 from collections.abc import Sequence
+from datetime import datetime, timezone
+from typing import Any
 from uuid import UUID
 
 from ainews.core.db.models import Article, ArticleChunk
@@ -14,9 +16,6 @@ class ArticleRepository:
         self,
         articles: list[Article],
     ) -> list[Article]:
-        """
-        Bulk inserts newly discovered articles.
-        """
         self.session.add_all(articles)
         await self.session.commit()
 
@@ -26,10 +25,6 @@ class ArticleRepository:
         self,
         hashes: list[str],
     ) -> set[str]:
-        """
-        Returns hashes already stored in DB.
-        """
-
         if not hashes:
             return set()
 
@@ -43,10 +38,6 @@ class ArticleRepository:
         self,
         limit: int = 50,
     ) -> Sequence[Article]:
-        """
-        Fetches articles that do not have chunks created yet.
-        """
-
         stmt = (
             select(Article)
             .outerjoin(
@@ -61,16 +52,84 @@ class ArticleRepository:
 
         return result.scalars().all()
 
-    async def get_articles_pending_embedding(
+    async def get_articles_pending_ner(
         self,
-        limit: int = 50,
+        limit: int,
     ) -> Sequence[Article]:
         """
-        Fetches articles that do not have article-level embeddings.
-        Used for event clustering embeddings.
+        Fetches articles that are ready for NER processing.
+
+        An article is ready when:
+        - NER has not been completed
+        - at least one chunk exists
+
+        The limit represents the number of articles, not chunks.
         """
 
-        stmt = select(Article).where(Article.embedding.is_(None)).limit(limit)
+        has_chunks = (
+            select(ArticleChunk.id)
+            .where(
+                ArticleChunk.article_id == Article.id,
+            )
+            .exists()
+        )
+
+        stmt = (
+            select(Article)
+            .where(
+                Article.ner_processed_at.is_(None),
+                has_chunks,
+            )
+            .order_by(Article.scraped_at)
+            .limit(limit)
+        )
+
+        result = await self.session.execute(stmt)
+
+        return result.scalars().all()
+
+    async def get_articles_pending_embedding(
+        self,
+        limit: int,
+    ) -> Sequence[Article]:
+        """
+        Fetches articles that are ready for embedding but are not
+        fully embedded yet.
+
+        An article is ready when:
+        - NER has completed
+        - at least one chunk exists
+        - either the article embedding is missing
+        or at least one chunk embedding is missing
+        """
+
+        has_chunks = (
+            select(ArticleChunk.id)
+            .where(
+                ArticleChunk.article_id == Article.id,
+            )
+            .exists()
+        )
+
+        has_pending_chunks = (
+            select(ArticleChunk.id)
+            .where(
+                ArticleChunk.article_id == Article.id,
+                ArticleChunk.embedding.is_(None),
+            )
+            .exists()
+        )
+
+        stmt = (
+            select(Article)
+            .where(
+                Article.ner_processed_at.is_not(None),
+                has_chunks,
+                (Article.embedding.is_(None) | has_pending_chunks),
+            )
+            .order_by(Article.scraped_at)
+            .limit(limit)
+        )
 
         result = await self.session.execute(stmt)
 
@@ -79,10 +138,11 @@ class ArticleRepository:
     async def save_article_embeddings_batch(
         self,
         items: list[tuple[UUID, list[float]]],
-    ):
-        """
-        Saves article-level embeddings.
-        """
+    ) -> None:
+        """Saves article-level embeddings."""
+
+        if not items:
+            return
 
         await self.session.execute(
             update(Article),
@@ -97,16 +157,39 @@ class ArticleRepository:
 
         await self.session.commit()
 
+    async def save_article_entities_batch(
+        self,
+        items: list[tuple[UUID, list[dict[str, Any]]]],
+    ) -> None:
+        """
+        Saves final article-level NER entities and marks
+        the articles as NER processed.
+        """
+
+        if not items:
+            return
+
+        processed_at = datetime.now(timezone.utc)
+
+        await self.session.execute(
+            update(Article),
+            [
+                {
+                    "id": article_id,
+                    "entities": entities,
+                    "ner_processed_at": processed_at,
+                }
+                for article_id, entities in items
+            ],
+        )
+
+        await self.session.commit()
+
     async def search_similar(
         self,
         query_embedding: Sequence[float],
         limit: int = 5,
     ) -> list[Article]:
-        """
-        Searches similar articles using article embeddings.
-        Used for event clustering.
-        """
-
         stmt = (
             select(Article)
             .where(Article.embedding.is_not(None))

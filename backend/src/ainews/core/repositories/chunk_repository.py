@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from uuid import UUID
 
 from ainews.core.db.models import ArticleChunk
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -14,56 +14,66 @@ class ChunkRepository:
         self,
         chunks: list[ArticleChunk],
     ) -> list[ArticleChunk]:
-        """
-        Bulk inserts article chunks.
-        """
         self.session.add_all(chunks)
         await self.session.commit()
 
         return chunks
 
-    async def get_pending_ner_chunks(
+    async def get_by_article_id(
         self,
-        limit: int = 100,
+        article_id: UUID,
     ) -> Sequence[ArticleChunk]:
-        """
-        Returns chunks that have not been processed by NER.
-        """
-
         result = await self.session.execute(
             select(ArticleChunk)
-            .where(ArticleChunk.ner_processed_at.is_(None))
-            .limit(limit)
+            .where(ArticleChunk.article_id == article_id)
+            .order_by(ArticleChunk.chunk_index)
         )
 
         return result.scalars().all()
 
-    async def mark_ner_processed(
+    async def get_by_article_ids(
         self,
-        chunk_ids: list[UUID],
-    ):
-        """
-        Marks chunks as completed for NER processing.
-        """
-
-        await self.session.execute(
-            update(ArticleChunk)
-            .where(ArticleChunk.id.in_(chunk_ids))
-            .values(ner_processed_at=func.now())
-        )
-
-        await self.session.commit()
-
-    async def get_pending_embedding_chunks(
-        self,
-        limit: int = 100,
+        article_ids: list[UUID],
     ) -> Sequence[ArticleChunk]:
-        """
-        Returns chunks that do not have embeddings.
-        """
+        if not article_ids:
+            return []
 
         result = await self.session.execute(
-            select(ArticleChunk).where(ArticleChunk.embedding.is_(None)).limit(limit)
+            select(ArticleChunk)
+            .where(ArticleChunk.article_id.in_(article_ids))
+            .order_by(
+                ArticleChunk.article_id,
+                ArticleChunk.chunk_index,
+            )
+        )
+
+        return result.scalars().all()
+
+    async def get_pending_embedding_chunks_for_articles(
+        self,
+        article_ids: list[UUID],
+    ) -> Sequence[ArticleChunk]:
+        """
+        Returns chunks without embeddings belonging to the
+        specified articles.
+
+        This allows the worker to recover if article embeddings
+        were committed before chunk embeddings.
+        """
+
+        if not article_ids:
+            return []
+
+        result = await self.session.execute(
+            select(ArticleChunk)
+            .where(
+                ArticleChunk.article_id.in_(article_ids),
+                ArticleChunk.embedding.is_(None),
+            )
+            .order_by(
+                ArticleChunk.article_id,
+                ArticleChunk.chunk_index,
+            )
         )
 
         return result.scalars().all()
@@ -71,10 +81,11 @@ class ChunkRepository:
     async def save_embeddings_batch(
         self,
         items: list[tuple[UUID, list[float]]],
-    ):
-        """
-        Saves embeddings for chunks.
-        """
+    ) -> None:
+        """Saves chunk-level embeddings."""
+
+        if not items:
+            return
 
         await self.session.execute(
             update(ArticleChunk),
@@ -89,31 +100,11 @@ class ChunkRepository:
 
         await self.session.commit()
 
-    async def get_by_article_id(
-        self,
-        article_id: UUID,
-    ) -> Sequence[ArticleChunk]:
-        """
-        Returns all chunks belonging to an article.
-        """
-
-        result = await self.session.execute(
-            select(ArticleChunk)
-            .where(ArticleChunk.article_id == article_id)
-            .order_by(ArticleChunk.chunk_index)
-        )
-
-        return result.scalars().all()
-
     async def search_similar(
         self,
         query_embedding: Sequence[float],
         limit: int = 5,
     ) -> list[ArticleChunk]:
-        """
-        Vector similarity search for RAG retrieval.
-        """
-
         result = await self.session.execute(
             select(ArticleChunk)
             .where(ArticleChunk.embedding.is_not(None))

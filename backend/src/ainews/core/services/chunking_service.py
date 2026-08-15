@@ -16,17 +16,16 @@ class ChunkingService:
     def __init__(
         self,
         model_name: str,
-        chunk_size: int = 512,
-        chunk_overlap: int = 50,
-        batch_size: int = 50,
+        chunk_size: int,
+        chunk_overlap: int,
+        article_batch_size: int,
     ):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.batch_size = batch_size
+        self.article_batch_size = article_batch_size
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_name,
-            local_files_only=True,
         )
 
     async def process_pending_articles(
@@ -40,7 +39,7 @@ class ChunkingService:
         """
 
         articles = await article_repo.get_articles_without_chunks(
-            limit=self.batch_size,
+            limit=self.article_batch_size,
         )
 
         for article in articles:

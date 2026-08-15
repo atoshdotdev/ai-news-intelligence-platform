@@ -12,15 +12,43 @@ class ChatConfig:
 @dataclass
 class EmbeddingConfig:
     model: str = "BAAI/bge-m3"
+    device: str = "cuda"
     dimensions: int = 1024
-    batch_size: int = 32
+    article_batch_size: int = 10
+    processing_batch_size: int = 16
     normalize: bool = True
+
+
+@dataclass
+class NERConfig:
+    model: str = "EmergentMethods/gliner_medium_news-v2.1"
+    threshold: float = 0.6
+    device: str = "cuda"
+    article_batch_size: int = 10
+    labels: tuple[str, ...] = (
+        "person",
+        "organization",
+        "location",
+        "country",
+        "event",
+        "date",
+        "money",
+    )
+
+
+@dataclass
+class ChunkingConfig:
+    chunk_token_size: int = 512
+    chunk_token_overlap: int = 50
+    article_batch_size: int = 10
 
 
 class AIConfig:
     def __init__(self):
         self.chat = ChatConfig()
         self.embedding = EmbeddingConfig()
+        self.ner = NERConfig()
+        self.chunking = ChunkingConfig()
 
     def update_chat(self, **kwargs):
         for k, v in kwargs.items():
@@ -29,3 +57,11 @@ class AIConfig:
     def update_embedding(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self.embedding, k, v)
+
+    def update_ner(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self.ner, k, v)
+
+    def update_chunking(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self.chunking, k, v)

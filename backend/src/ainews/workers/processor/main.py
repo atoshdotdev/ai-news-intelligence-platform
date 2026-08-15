@@ -18,6 +18,7 @@ async def main_loop():
 
     while True:
         try:
+            logger.info("Starting processing cycle...")
             async with AsyncSessionLocal() as session:
                 pipeline = build_pipeline(
                     session=session,
