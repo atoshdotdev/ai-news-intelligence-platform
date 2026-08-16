@@ -10,11 +10,40 @@ resolution-markers = [
 name = "ainews"
 version = "0.1.0"
 source = { editable = "." }
-dependencies = [
+
+[package.dev-dependencies]
+api = [
     { name = "alembic" },
     { name = "asyncpg" },
-    { name = "crawl4ai" },
     { name = "fastapi", extra = ["standard"] },
+    { name = "ollama" },
+    { name = "pgvector" },
+    { name = "pydantic-settings" },
+    { name = "python-dotenv" },
+    { name = "sentence-transformers" },
+    { name = "sqlalchemy", extra = ["asyncio"] },
+]
+common = [
+    { name = "alembic" },
+    { name = "asyncpg" },
+    { name = "pgvector" },
+    { name = "pydantic-settings" },
+    { name = "python-dotenv" },
+    { name = "sqlalchemy", extra = ["asyncio"] },
+]
+crawler = [
+    { name = "alembic" },
+    { name = "asyncpg" },
+    { name = "beautifulsoup4" },
+    { name = "crawl4ai" },
+    { name = "pgvector" },
+    { name = "pydantic-settings" },
+    { name = "python-dotenv" },
+    { name = "sqlalchemy", extra = ["asyncio"] },
+]
+processing = [
+    { name = "alembic" },
+    { name = "asyncpg" },
     { name = "gliner" },
     { name = "langchain-text-splitters" },
     { name = "ollama" },
@@ -26,11 +55,40 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [
+
+[package.metadata.requires-dev]
+api = [
     { name = "alembic", specifier = ">=1.18.4" },
     { name = "asyncpg", specifier = ">=0.31.0" },
-    { name = "crawl4ai", specifier = ">=0.8.6" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.136.1" },
+    { name = "ollama", specifier = ">=0.6.2" },
+    { name = "pgvector", specifier = ">=0.4.2" },
+    { name = "pydantic-settings", specifier = ">=2.14.1" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "sentence-transformers", specifier = ">=5.6.0" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.49" },
+]
+common = [
+    { name = "alembic", specifier = ">=1.18.4" },
+    { name = "asyncpg", specifier = ">=0.31.0" },
+    { name = "pgvector", specifier = ">=0.4.2" },
+    { name = "pydantic-settings", specifier = ">=2.14.1" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.49" },
+]
+crawler = [
+    { name = "alembic", specifier = ">=1.18.4" },
+    { name = "asyncpg", specifier = ">=0.31.0" },
+    { name = "beautifulsoup4", specifier = ">=4.14.3" },
+    { name = "crawl4ai", specifier = ">=0.8.6" },
+    { name = "pgvector", specifier = ">=0.4.2" },
+    { name = "pydantic-settings", specifier = ">=2.14.1" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.49" },
+]
+processing = [
+    { name = "alembic", specifier = ">=1.18.4" },
+    { name = "asyncpg", specifier = ">=0.31.0" },
     { name = "gliner", specifier = ">=0.2.27" },
     { name = "langchain-text-splitters", specifier = ">=1.1.2" },
     { name = "ollama", specifier = ">=0.6.2" },

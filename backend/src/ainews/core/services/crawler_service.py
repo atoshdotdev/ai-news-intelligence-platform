@@ -1,5 +1,8 @@
 import hashlib
+import json
 from collections.abc import AsyncGenerator
+from datetime import datetime
+from typing import Any
 from urllib.parse import (
     parse_qsl,
     urlencode,
@@ -12,6 +15,7 @@ from ainews.core.db.models import Article
 from ainews.core.repositories.article_repository import ArticleRepository
 from ainews.core.repositories.source_repository import SourceRepository
 from ainews.core.utils.logger import logger
+from bs4 import BeautifulSoup
 from crawl4ai import (
     BrowserConfig,
     CacheMode,
@@ -104,6 +108,105 @@ class CrawlerService:
         segments = [segment for segment in path.split("/") if segment]
 
         return not len(segments) < 2
+
+    @staticmethod
+    def parse_datetime(value: Any) -> datetime | None:
+        if isinstance(value, datetime):
+            return value
+
+        if not isinstance(value, str):
+            return None
+
+        try:
+            return datetime.fromisoformat(
+                value.replace("Z", "+00:00"),
+            )
+        except ValueError:
+            return None
+
+    @classmethod
+    def extract_published_at(
+        cls,
+        html: str | None,
+        metadata: dict[str, Any] | None,
+    ) -> datetime | None:
+        if html:
+            soup = BeautifulSoup(html, "html.parser")
+
+            for script in soup.find_all(
+                "script",
+                type="application/ld+json",
+            ):
+                raw_json = script.string or script.get_text()
+
+                try:
+                    data = json.loads(raw_json)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+
+                objects: list[dict[str, Any]] = []
+
+                if isinstance(data, dict):
+                    objects.append(data)
+
+                    graph = data.get("@graph")
+
+                    if isinstance(graph, list):
+                        objects.extend(item for item in graph if isinstance(item, dict))
+
+                elif isinstance(data, list):
+                    objects.extend(item for item in data if isinstance(item, dict))
+
+                for obj in objects:
+                    item_type = obj.get("@type")
+
+                    if isinstance(item_type, list):
+                        is_article = any(
+                            value
+                            in {
+                                "Article",
+                                "NewsArticle",
+                                "ReportageNewsArticle",
+                            }
+                            for value in item_type
+                        )
+                    else:
+                        is_article = item_type in {
+                            "Article",
+                            "NewsArticle",
+                            "ReportageNewsArticle",
+                        }
+
+                    if not is_article:
+                        continue
+
+                    published_at = cls.parse_datetime(
+                        obj.get("datePublished"),
+                    )
+
+                    if published_at:
+                        return published_at
+
+        if metadata:
+            candidates = (
+                "article:published_time",
+                "cXenseParse:publishtime",
+                "datePublished",
+                "datepublished",
+                "pubdate",
+                "dc.date",
+                "dc.date.issued",
+            )
+
+            for key in candidates:
+                published_at = cls.parse_datetime(
+                    metadata.get(key),
+                )
+
+                if published_at:
+                    return published_at
+
+        return None
 
     async def run(self):
         """
@@ -360,6 +463,11 @@ class CrawlerService:
                                             or article_result.metadata.get("image")
                                         )
 
+                                    published_at = self.extract_published_at(
+                                        html=article_result.html,
+                                        metadata=article_result.metadata,
+                                    )
+
                                     articles_to_create.append(
                                         Article(
                                             url=canonical_url,
@@ -368,6 +476,7 @@ class CrawlerService:
                                             content=extracted_content,
                                             source_id=source.id,
                                             image_url=image_url,
+                                            published_at=published_at,
                                         )
                                     )
 

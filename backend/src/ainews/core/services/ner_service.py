@@ -80,16 +80,6 @@ class NERService:
     ) -> None:
         """
         Processes NER for a batch of articles.
-
-        For each article:
-        1. Get all of its chunks.
-        2. Run NER on every chunk.
-        3. Combine all entities.
-        4. Deduplicate entities.
-        5. Save the final entity list to the article.
-
-        The article is only marked as NER processed after all
-        of its chunks have been successfully processed.
         """
 
         articles = await article_repo.get_articles_pending_ner(

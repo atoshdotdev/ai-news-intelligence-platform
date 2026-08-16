@@ -57,42 +57,41 @@ services:
         - action: rebuild
           path: ./frontend/package.json
 
-  # web-scraper:
-  #   image: unclecode/crawl4ai:0.8.6
-  #   container_name: ainews-web-scraper
-  #   restart: unless-stopped
-  #   ports:
-  #     - "11235:11235"
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   env_file:
-  #     - .env
+  web-scraper:
+    image: unclecode/crawl4ai:0.8.6
+    container_name: ainews-web-scraper
+    restart: unless-stopped
+    ports:
+      - "11235:11235"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
 
-  # worker1:
-  #   build:
-  #     context: ./backend
-  #     args:
-  #       UV_GROUP: crawler
-  #   container_name: ainews-scraper-worker
-  #   restart: unless-stopped
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   env_file:
-  #     - .env
-  #   command:
-  #     ["uv", "run", "python", "-m", "ainews.workers.crawler.main"]
-  #   develop:
-  #     watch:
-  #       - action: sync
-  #         path: ./backend
-  #         target: /app
-  #         ignore:
-  #           - .venv
-  #           - alembic
-  #       - action: rebuild
-  #         path: ./backend/pyproject.toml
+  worker1:
+    build:
+      context: ./backend
+      args:
+        UV_GROUP: crawler
+    container_name: ainews-scraper-worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    command: ["uv", "run", "python", "-m", "ainews.workers.crawler.main"]
+    develop:
+      watch:
+        - action: sync
+          path: ./backend
+          target: /app
+          ignore:
+            - .venv
+            - alembic
+        - action: rebuild
+          path: ./backend/pyproject.toml
 
   worker2:
     build:

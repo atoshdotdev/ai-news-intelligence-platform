@@ -30,16 +30,13 @@ class NERConfig:
         "organization",
         "location",
         "country",
-        "event",
-        "date",
-        "money",
     )
 
 
 @dataclass
 class ChunkingConfig:
-    chunk_token_size: int = 512
-    chunk_token_overlap: int = 50
+    chunk_token_size: int = 256
+    chunk_token_overlap: int = 32
     article_batch_size: int = 10
 
 

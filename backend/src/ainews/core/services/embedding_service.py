@@ -84,23 +84,42 @@ class EmbeddingService:
         """
         Builds the compact representation used for the article-level
         embedding.
-
-        The article embedding is intended for semantic filtering and
-        event clustering, not detailed RAG retrieval.
         """
 
         parts = [
-            f"Title: {article.title}",
-            f"Lead: {first_chunk.content}",
+            f"Title: {article.title.strip()}",
+            f"Content: {first_chunk.content.strip()}",
         ]
 
         if article.entities:
-            entities = ", ".join(
-                entity["text"] for entity in article.entities if entity.get("text")
-            )
+            entities_by_label: dict[str, set[str]] = {}
 
-            if entities:
-                parts.append(f"Entities: {entities}")
+            for entity in article.entities:
+                text = entity.get("text")
+                label = entity.get("label")
+
+                if not isinstance(text, str) or not isinstance(label, str):
+                    continue
+
+                text = text.strip()
+                label = label.strip().lower()
+
+                if not text or not label:
+                    continue
+
+                entities_by_label.setdefault(label, set()).add(text)
+
+            if entities_by_label:
+                entity_lines = [
+                    f"{label}: {', '.join(sorted(entities))}"
+                    for label, entities in sorted(
+                        entities_by_label.items(),
+                    )
+                    if entities
+                ]
+
+                if entity_lines:
+                    parts.append("Entities:\n" + "\n".join(entity_lines))
 
         return "\n\n".join(parts)
 
