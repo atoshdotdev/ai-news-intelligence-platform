@@ -2,11 +2,11 @@ from collections.abc import Sequence
 
 from ollama import AsyncClient
 
-from ainews.core.config.ai_models import AIConfig
+from ainews.core.config.config import Config
 
 
 class OllamaClient:
-    def __init__(self, base_url: str, config: AIConfig):
+    def __init__(self, base_url: str, config: Config):
         self.client = AsyncClient(host=base_url)
         self.config = config
 

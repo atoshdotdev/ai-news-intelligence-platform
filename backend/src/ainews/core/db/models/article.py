@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ainews.core.db.base import Base
 
 if TYPE_CHECKING:
-    from ainews.core.db.models import ArticleChunk, Source
+    from ainews.core.db.models import ArticleChunk, Event, Source
 
 
 class Article(Base):
@@ -89,4 +89,15 @@ class Article(Base):
     chunks: Mapped[list["ArticleChunk"]] = relationship(
         back_populates="article",
         cascade="all, delete-orphan",
+    )
+
+    event_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("events.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    event: Mapped["Event | None"] = relationship(
+        back_populates="articles",
     )

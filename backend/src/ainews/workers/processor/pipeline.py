@@ -1,7 +1,9 @@
 from ainews.core.clients.ollama_client import OllamaClient
 from ainews.core.repositories.article_repository import ArticleRepository
 from ainews.core.repositories.chunk_repository import ChunkRepository
+from ainews.core.repositories.event_repository import EventRepository
 from ainews.core.services.chunking_service import ChunkingService
+from ainews.core.services.clustering_service import ClusteringService
 from ainews.core.services.embedding_service import EmbeddingService
 from ainews.core.services.ner_service import NERService
 from ainews.core.utils.logger import logger
@@ -12,16 +14,20 @@ class ProcessingPipeline:
         self,
         article_repo: ArticleRepository,
         chunk_repo: ChunkRepository,
+        event_repo: EventRepository,
         chunking_service: ChunkingService,
         ner_service: NERService,
         embedding_service: EmbeddingService,
+        clustering_service: ClusteringService,
         ollama: OllamaClient,
     ):
         self.article_repo = article_repo
         self.chunk_repo = chunk_repo
+        self.event_repo = event_repo
         self.chunking_service = chunking_service
         self.ner_service = ner_service
         self.embedding_service = embedding_service
+        self.clustering_service = clustering_service
         self.ollama = ollama
 
     async def run(self) -> None:
@@ -51,3 +57,12 @@ class ProcessingPipeline:
         )
 
         logger.info("Embeddings completed.")
+
+        logger.info("Starting clustering...")
+
+        await self.clustering_service.process_pending_articles(
+            article_repo=self.article_repo,
+            event_repo=self.event_repo,
+        )
+
+        logger.info("Clustering completed.")

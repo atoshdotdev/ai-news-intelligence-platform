@@ -7,17 +7,17 @@ from fastapi.responses import JSONResponse
 
 from ainews.api.routes import router as api_router
 from ainews.core.clients.ollama_client import OllamaClient
-from ainews.core.config.ai_models import AIConfig
+from ainews.core.config.config import Config
 from ainews.core.config.settings import settings
 from ainews.core.utils.logger import logger
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.ai_config = AIConfig()
+    app.state.config = Config()
     app.state.ollama = OllamaClient(
         base_url=settings.ollama_host,
-        config=app.state.ai_config,
+        config=app.state.config,
     )
 
     yield

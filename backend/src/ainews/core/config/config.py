@@ -40,12 +40,25 @@ class ChunkingConfig:
     article_batch_size: int = 10
 
 
-class AIConfig:
+@dataclass
+class ClusteringConfig:
+    similarity_threshold: float = 0.70
+    final_score_threshold: float = 0.75
+    max_event_age_days: int = 5
+    time_decay_hours: float = 48.0
+    embedding_weight: float = 0.70
+    entity_weight: float = 0.15
+    time_weight: float = 0.15
+    article_batch_size: int = 10
+
+
+class Config:
     def __init__(self):
         self.chat = ChatConfig()
         self.embedding = EmbeddingConfig()
         self.ner = NERConfig()
         self.chunking = ChunkingConfig()
+        self.clustering = ClusteringConfig()
 
     def update_chat(self, **kwargs):
         for k, v in kwargs.items():
@@ -62,3 +75,7 @@ class AIConfig:
     def update_chunking(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self.chunking, k, v)
+
+    def update_clustering(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self.clustering, k, v)

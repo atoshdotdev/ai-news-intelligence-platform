@@ -1,11 +1,13 @@
 from dataclasses import dataclass
 
 from ainews.core.clients.ollama_client import OllamaClient
-from ainews.core.config.ai_models import AIConfig
+from ainews.core.config.config import Config
 from ainews.core.config.settings import settings
 from ainews.core.repositories.article_repository import ArticleRepository
 from ainews.core.repositories.chunk_repository import ChunkRepository
+from ainews.core.repositories.event_repository import EventRepository
 from ainews.core.services.chunking_service import ChunkingService
+from ainews.core.services.clustering_service import ClusteringService
 from ainews.core.services.embedding_service import EmbeddingService
 from ainews.core.services.ner_service import NERService
 from ainews.workers.processor.pipeline import ProcessingPipeline
@@ -16,35 +18,47 @@ class ProcessingServices:
     chunking: ChunkingService
     ner: NERService
     embedding: EmbeddingService
+    clustering: ClusteringService
     ollama: OllamaClient
 
 
-def build_services(ai_config: AIConfig) -> ProcessingServices:
+def build_services(config: Config) -> ProcessingServices:
     ollama = OllamaClient(
         settings.ollama_host,
-        ai_config,
+        config,
     )
 
     chunking_service = ChunkingService(
-        model_name=ai_config.embedding.model,
-        chunk_size=ai_config.chunking.chunk_token_size,
-        chunk_overlap=ai_config.chunking.chunk_token_overlap,
-        article_batch_size=ai_config.chunking.article_batch_size,
+        model_name=config.embedding.model,
+        chunk_size=config.chunking.chunk_token_size,
+        chunk_overlap=config.chunking.chunk_token_overlap,
+        article_batch_size=config.chunking.article_batch_size,
     )
 
     ner_service = NERService(
-        model_name=ai_config.ner.model,
-        labels=ai_config.ner.labels,
-        threshold=ai_config.ner.threshold,
-        device=ai_config.ner.device,
-        article_batch_size=ai_config.ner.article_batch_size,
+        model_name=config.ner.model,
+        labels=config.ner.labels,
+        threshold=config.ner.threshold,
+        device=config.ner.device,
+        article_batch_size=config.ner.article_batch_size,
     )
 
     embedding_service = EmbeddingService(
-        model_name=ai_config.embedding.model,
-        processing_batch_size=ai_config.embedding.processing_batch_size,
-        article_batch_size=ai_config.embedding.article_batch_size,
-        device=ai_config.embedding.device,
+        model_name=config.embedding.model,
+        processing_batch_size=config.embedding.processing_batch_size,
+        article_batch_size=config.embedding.article_batch_size,
+        device=config.embedding.device,
+    )
+
+    clustering_service = ClusteringService(
+        article_batch_size=config.clustering.article_batch_size,
+        similarity_threshold=config.clustering.similarity_threshold,
+        final_score_threshold=config.clustering.final_score_threshold,
+        max_event_age_days=config.clustering.max_event_age_days,
+        time_decay_hours=config.clustering.time_decay_hours,
+        embedding_weight=config.clustering.embedding_weight,
+        entity_weight=config.clustering.entity_weight,
+        time_weight=config.clustering.time_weight,
     )
 
     return ProcessingServices(
@@ -52,6 +66,7 @@ def build_services(ai_config: AIConfig) -> ProcessingServices:
         ner=ner_service,
         embedding=embedding_service,
         ollama=ollama,
+        clustering=clustering_service,
     )
 
 
@@ -61,12 +76,15 @@ def build_pipeline(
 ) -> ProcessingPipeline:
     article_repo = ArticleRepository(session)
     chunk_repo = ChunkRepository(session)
+    event_repo = EventRepository(session)
 
     return ProcessingPipeline(
         article_repo=article_repo,
         chunk_repo=chunk_repo,
+        event_repo=event_repo,
         chunking_service=services.chunking,
         ner_service=services.ner,
         embedding_service=services.embedding,
         ollama=services.ollama,
+        clustering_service=services.clustering,
     )

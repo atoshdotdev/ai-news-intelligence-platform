@@ -1,12 +1,12 @@
 import asyncio
 
-from ainews.core.config.ai_models import AIConfig
+from ainews.core.config.config import Config
 from ainews.core.config.settings import settings
 from ainews.core.db.database import AsyncSessionLocal
 from ainews.core.utils.logger import logger
 from ainews.workers.processor.factory import build_pipeline, build_services
 
-ai_config = AIConfig()
+config = Config()
 
 
 async def main_loop():
@@ -14,7 +14,7 @@ async def main_loop():
 
     cycle_sleep_seconds = settings.processing_sleep_seconds
 
-    services = build_services(ai_config)
+    services = build_services(config)
 
     while True:
         try:

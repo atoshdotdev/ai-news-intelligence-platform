@@ -45,6 +45,10 @@ class ArticleRepository:
                 ArticleChunk.article_id == Article.id,
             )
             .where(ArticleChunk.id.is_(None))
+            .order_by(
+                Article.published_at.asc().nulls_last(),
+                Article.scraped_at.asc(),
+            )
             .limit(limit)
         )
 
@@ -80,7 +84,10 @@ class ArticleRepository:
                 Article.ner_processed_at.is_(None),
                 has_chunks,
             )
-            .order_by(Article.scraped_at)
+            .order_by(
+                Article.published_at.asc().nulls_last(),
+                Article.scraped_at.asc(),
+            )
             .limit(limit)
         )
 
@@ -127,7 +134,10 @@ class ArticleRepository:
                 has_chunks,
                 (Article.embedding.is_(None) | has_pending_chunks),
             )
-            .order_by(Article.scraped_at)
+            .order_by(
+                Article.published_at.asc().nulls_last(),
+                Article.scraped_at.asc(),
+            )
             .limit(limit)
         )
 
@@ -200,3 +210,24 @@ class ArticleRepository:
         result = await self.session.execute(stmt)
 
         return list(result.scalars().all())
+
+    async def get_articles_pending_clustering(
+        self,
+        limit: int,
+    ) -> Sequence[Article]:
+        stmt = (
+            select(Article)
+            .where(
+                Article.embedding.is_not(None),
+                Article.event_id.is_(None),
+            )
+            .order_by(
+                Article.published_at.asc().nulls_last(),
+                Article.scraped_at.asc(),
+            )
+            .limit(limit)
+        )
+
+        result = await self.session.execute(stmt)
+
+        return result.scalars().all()
