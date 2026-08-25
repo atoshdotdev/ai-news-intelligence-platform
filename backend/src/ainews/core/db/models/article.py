@@ -51,9 +51,9 @@ class Article(Base):
         index=True,
     )
 
-    published_at: Mapped[datetime | None] = mapped_column(
+    published_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        nullable=True,
+        nullable=False,
         index=True,
     )
 

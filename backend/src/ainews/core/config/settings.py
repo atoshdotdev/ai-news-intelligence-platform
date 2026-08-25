@@ -1,5 +1,3 @@
-from typing import List
-
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -10,7 +8,7 @@ class Settings(BaseSettings):
         description="The URL for the database connection",
     )
     ollama_host: str = Field(
-        default="http://host.docker.internal:11434",
+        default="http://ollama:11434",
         description="The URL for the Ollama API",
     )
     web_crawler_url: str = Field(
@@ -25,14 +23,14 @@ class Settings(BaseSettings):
         default=1800,
         description="The number of seconds the processing worker should sleep between cycles",
     )
-    cors_allowed_origins: List[str] = [
+    cors_allowed_origins: list[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
     ]
     cors_allow_credentials: bool = True
-    cors_allow_methods: List[str] = ["*"]
-    cors_allow_headers: List[str] = ["*"]
-    cors_expose_headers: List[str] = ["Content-Disposition"]
+    cors_allow_methods: list[str] = ["*"]
+    cors_allow_headers: list[str] = ["*"]
+    cors_expose_headers: list[str] = ["Content-Disposition"]
 
 
 settings = Settings()

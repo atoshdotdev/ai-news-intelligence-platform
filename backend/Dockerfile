@@ -22,5 +22,3 @@ RUN uv sync \
     --no-install-project
 
 COPY --chown=appuser:appuser . .
-
-RUN uv sync --only-group ${UV_GROUP}

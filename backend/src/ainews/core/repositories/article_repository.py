@@ -46,7 +46,7 @@ class ArticleRepository:
             )
             .where(ArticleChunk.id.is_(None))
             .order_by(
-                Article.published_at.asc().nulls_last(),
+                Article.published_at.asc(),
                 Article.scraped_at.asc(),
             )
             .limit(limit)
@@ -85,7 +85,7 @@ class ArticleRepository:
                 has_chunks,
             )
             .order_by(
-                Article.published_at.asc().nulls_last(),
+                Article.published_at.asc(),
                 Article.scraped_at.asc(),
             )
             .limit(limit)
@@ -135,7 +135,7 @@ class ArticleRepository:
                 (Article.embedding.is_(None) | has_pending_chunks),
             )
             .order_by(
-                Article.published_at.asc().nulls_last(),
+                Article.published_at.asc(),
                 Article.scraped_at.asc(),
             )
             .limit(limit)
@@ -222,7 +222,7 @@ class ArticleRepository:
                 Article.event_id.is_(None),
             )
             .order_by(
-                Article.published_at.asc().nulls_last(),
+                Article.published_at.asc(),
                 Article.scraped_at.asc(),
             )
             .limit(limit)

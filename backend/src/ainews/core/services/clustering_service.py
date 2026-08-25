@@ -314,7 +314,7 @@ class ClusteringService:
     def _get_reference_time(
         article: Article,
     ) -> datetime:
-        reference_time = article.published_at or article.scraped_at
+        reference_time = article.published_at
 
         if reference_time.tzinfo is None:
             reference_time = reference_time.replace(

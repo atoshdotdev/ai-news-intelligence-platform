@@ -1,7 +1,7 @@
 import hashlib
 import json
 from collections.abc import AsyncGenerator
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import (
     parse_qsl,
@@ -34,6 +34,7 @@ class CrawlerService:
         self.source_repo = SourceRepository(session)
         self.base_url = settings.web_crawler_url
         self.BATCH_SIZE = 5
+        self.MAX_ARTICLE_AGE_DAYS = 30
 
     def canonicalize_url(self, url: str) -> str:
         """
@@ -112,17 +113,25 @@ class CrawlerService:
     @staticmethod
     def parse_datetime(value: Any) -> datetime | None:
         if isinstance(value, datetime):
-            return value
+            parsed = value
 
-        if not isinstance(value, str):
+        elif isinstance(value, str):
+            try:
+                parsed = datetime.fromisoformat(
+                    value.replace("Z", "+00:00"),
+                )
+            except ValueError:
+                return None
+
+        else:
             return None
 
-        try:
-            return datetime.fromisoformat(
-                value.replace("Z", "+00:00"),
-            )
-        except ValueError:
-            return None
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        else:
+            parsed = parsed.astimezone(timezone.utc)
+
+        return parsed
 
     @classmethod
     def extract_published_at(
@@ -397,6 +406,9 @@ class CrawlerService:
                                 continue
 
                             articles_to_create = []
+                            cutoff = datetime.now(timezone.utc) - timedelta(
+                                days=self.MAX_ARTICLE_AGE_DAYS,
+                            )
 
                             for article_result in batch_results:
                                 try:
@@ -467,6 +479,20 @@ class CrawlerService:
                                         html=article_result.html,
                                         metadata=article_result.metadata,
                                     )
+
+                                    if published_at is None:
+                                        logger.warning(
+                                            f"Could not determine published date for "
+                                            f"article: {canonical_url}"
+                                        )
+                                        continue
+
+                                    if published_at < cutoff:
+                                        logger.warning(
+                                            f"Article is too old and will be skipped: "
+                                            f"{canonical_url}"
+                                        )
+                                        continue
 
                                     articles_to_create.append(
                                         Article(

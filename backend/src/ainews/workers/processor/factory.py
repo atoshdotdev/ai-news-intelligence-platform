@@ -10,6 +10,7 @@ from ainews.core.services.chunking_service import ChunkingService
 from ainews.core.services.clustering_service import ClusteringService
 from ainews.core.services.embedding_service import EmbeddingService
 from ainews.core.services.ner_service import NERService
+from ainews.core.services.summarization_service import SummarizationService
 from ainews.workers.processor.pipeline import ProcessingPipeline
 
 
@@ -19,6 +20,7 @@ class ProcessingServices:
     ner: NERService
     embedding: EmbeddingService
     clustering: ClusteringService
+    summarization: SummarizationService
     ollama: OllamaClient
 
 
@@ -61,12 +63,23 @@ def build_services(config: Config) -> ProcessingServices:
         time_weight=config.clustering.time_weight,
     )
 
+    summarization_service = SummarizationService(
+        ollama=ollama,
+        event_batch_size=config.summarization.event_batch_size,
+        max_articles_per_event=config.summarization.max_articles_per_event,
+        article_max_chars=config.summarization.article_max_chars,
+        system_prompt=config.summarization.system_prompt,
+        user_prompt=config.summarization.user_prompt,
+        refresh_hours=config.summarization.refresh_hours,
+    )
+
     return ProcessingServices(
         chunking=chunking_service,
         ner=ner_service,
         embedding=embedding_service,
         ollama=ollama,
         clustering=clustering_service,
+        summarization=summarization_service,
     )
 
 
@@ -87,4 +100,5 @@ def build_pipeline(
         embedding_service=services.embedding,
         ollama=services.ollama,
         clustering_service=services.clustering,
+        summarization_service=services.summarization,
     )

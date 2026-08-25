@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from ainews.core.db.models import Article, Event
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -59,7 +59,7 @@ class EventRepository:
             title=article.title,
             embedding=article.embedding,
             entities=article.entities,
-            last_published_at=article.published_at or article.scraped_at,
+            last_published_at=article.published_at,
         )
 
         self.session.add(event)
@@ -91,18 +91,19 @@ class EventRepository:
         event_id: UUID,
         *,
         title: str | None = None,
+        summary: str | None = None,
         embedding: Sequence[float] | None = None,
         entities: list[dict] | None = None,
         last_published_at: datetime | None = None,
+        summary_last_published_at: datetime | None = None,
     ) -> None:
-        """
-        Updates event fields supplied by the caller.
-        """
-
         values: dict[str, object] = {}
 
         if title is not None:
             values["title"] = title
+
+        if summary is not None:
+            values["summary"] = summary
 
         if embedding is not None:
             values["embedding"] = list(embedding)
@@ -112,6 +113,9 @@ class EventRepository:
 
         if last_published_at is not None:
             values["last_published_at"] = last_published_at
+
+        if summary_last_published_at is not None:
+            values["summary_last_published_at"] = summary_last_published_at
 
         if not values:
             return
@@ -155,7 +159,7 @@ class EventRepository:
                 Article.event_id == event_id,
             )
             .order_by(
-                Article.published_at.asc().nulls_last(),
+                Article.published_at.asc(),
                 Article.scraped_at.asc(),
             )
         )
@@ -180,6 +184,31 @@ class EventRepository:
             )
             .order_by(
                 Event.updated_at.desc(),
+            )
+            .limit(limit)
+        )
+
+        result = await self.session.execute(stmt)
+
+        return list(result.scalars().all())
+
+    async def get_events_pending_summary(
+        self, limit: int, refresh_hours: int
+    ) -> list[Event]:
+        refresh_interval = timedelta(hours=refresh_hours)
+
+        stmt = (
+            select(Event)
+            .where(
+                or_(
+                    Event.summary.is_(None),
+                    Event.last_published_at - Event.summary_last_published_at
+                    >= refresh_interval,
+                ),
+            )
+            .order_by(
+                Event.last_published_at.asc(),
+                Event.created_at.asc(),
             )
             .limit(limit)
         )

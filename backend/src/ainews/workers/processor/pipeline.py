@@ -6,6 +6,7 @@ from ainews.core.services.chunking_service import ChunkingService
 from ainews.core.services.clustering_service import ClusteringService
 from ainews.core.services.embedding_service import EmbeddingService
 from ainews.core.services.ner_service import NERService
+from ainews.core.services.summarization_service import SummarizationService
 from ainews.core.utils.logger import logger
 
 
@@ -19,6 +20,7 @@ class ProcessingPipeline:
         ner_service: NERService,
         embedding_service: EmbeddingService,
         clustering_service: ClusteringService,
+        summarization_service: SummarizationService,
         ollama: OllamaClient,
     ):
         self.article_repo = article_repo
@@ -28,6 +30,7 @@ class ProcessingPipeline:
         self.ner_service = ner_service
         self.embedding_service = embedding_service
         self.clustering_service = clustering_service
+        self.summarization_service = summarization_service
         self.ollama = ollama
 
     async def run(self) -> None:
@@ -66,3 +69,11 @@ class ProcessingPipeline:
         )
 
         logger.info("Clustering completed.")
+
+        logger.info("Starting summarization...")
+
+        await self.summarization_service.process_pending_events(
+            event_repo=self.event_repo,
+        )
+
+        logger.info("Summarization completed.")
