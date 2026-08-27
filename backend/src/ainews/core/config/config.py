@@ -55,39 +55,32 @@ class ClusteringConfig:
 EVENT_SUMMARY_SYSTEM_PROMPT = """\
 You are a factual news event summarization system.
 
-Your task is to produce a concise summary of the news event described by the
-provided article or articles.
-
-The provided content may come from one article or multiple articles covering
-the same event. When multiple articles are provided, combine their information
-into one coherent narrative and preserve important developments over time.
+Summarize the provided article or articles into ONE concise, factual news
+event summary.
 
 Rules:
-1. Use ONLY information contained in the provided content.
+1. Use ONLY information explicitly stated in the provided content.
 2. Do not invent facts, numbers, names, locations, causes, or outcomes.
 3. Do not present speculation as confirmed fact.
-4. Remove repeated information while preserving important details.
-5. When multiple articles describe different developments, preserve the
-   important progression of the event and give appropriate weight to the
-   latest known development.
-6. If sources contain conflicting information, briefly acknowledge the
-   uncertainty rather than choosing an unsupported version.
-7. Do not summarize each article separately or list the articles.
-8. Do not mention the articles, the prompt, the summarization process, or
-   your reasoning.
-9. Return ONLY the final event summary.
-10. Write 1–3 concise paragraphs.
+4. Combine all articles into one coherent narrative.
+5. Remove repeated information.
+6. Preserve important developments over time and prioritize the latest
+   confirmed development.
+7. If sources conflict, briefly state the uncertainty instead of choosing
+   an unsupported version.
+8. Do not summarize articles separately or list them.
+9. Do not mention the articles, sources, prompt, instructions, or your
+   summarization process.
+10. Output ONLY the final summary.
+11. Do not include a title, heading, label, introduction, preamble, or
+    commentary.
+12. Do not begin with phrases such as "Here is a summary", "Here is a
+    concise summary", "Summary:", or similar.
+13. Start the response immediately with the first factual statement.
+14. Write 1–3 concise paragraphs.
 """
 
 EVENT_SUMMARY_USER_PROMPT = """\
-Summarize the following news event using only the information provided.
-
-If there is one article, summarize the event described in that article.
-
-If there are multiple articles, synthesize them into one coherent narrative,
-removing repetition while preserving important developments and the latest
-known status.
-
 ARTICLES:
 
 {articles}
@@ -96,17 +89,40 @@ ARTICLES:
 
 @dataclass
 class SummarizationConfig:
-    model: str = "llama3.2:3b"
-    temperature: float = 0.2
+    model: str = "llama3.2:1b"
+    temperature: float = 0.1
     top_p: float = 0.95
-    context_size: int = 16384
-    max_tokens: int = 1024
-    article_max_chars: int = 10000
-    max_articles_per_event: int = 5
+    context_size: int = 8192
+    max_tokens: int = 512
+    article_max_chars: int = 8000
+    max_articles_per_event: int = 3
     refresh_hours: int = 3
     event_batch_size: int = 10
     system_prompt: str = EVENT_SUMMARY_SYSTEM_PROMPT
     user_prompt: str = EVENT_SUMMARY_USER_PROMPT
+
+
+@dataclass
+class ClassificationConfig:
+    model: str = "facebook/bart-large-mnli"
+    device: str = "cuda"
+    candidate_labels: tuple[str, ...] = (
+        "Politics",
+        "Business",
+        "Technology",
+        "Science",
+        "Health",
+        "Environment",
+        "World",
+        "Sports",
+        "Crime",
+        "War",
+        "Education",
+        "Entertainment",
+        "Other",
+    )
+    multi_label: bool = False
+    event_batch_size: int = 10
 
 
 class Config:
@@ -117,6 +133,7 @@ class Config:
         self.chunking = ChunkingConfig()
         self.clustering = ClusteringConfig()
         self.summarization = SummarizationConfig()
+        self.classification = ClassificationConfig()
 
     def update_chat(self, **kwargs):
         for k, v in kwargs.items():
@@ -141,3 +158,7 @@ class Config:
     def update_summarization(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self.summarization, k, v)
+
+    def update_classification(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self.classification, k, v)

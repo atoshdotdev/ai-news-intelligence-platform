@@ -3,6 +3,7 @@ from ainews.core.repositories.article_repository import ArticleRepository
 from ainews.core.repositories.chunk_repository import ChunkRepository
 from ainews.core.repositories.event_repository import EventRepository
 from ainews.core.services.chunking_service import ChunkingService
+from ainews.core.services.classification_service import ClassificationService
 from ainews.core.services.clustering_service import ClusteringService
 from ainews.core.services.embedding_service import EmbeddingService
 from ainews.core.services.ner_service import NERService
@@ -21,6 +22,7 @@ class ProcessingPipeline:
         embedding_service: EmbeddingService,
         clustering_service: ClusteringService,
         summarization_service: SummarizationService,
+        classification_service: ClassificationService,
         ollama: OllamaClient,
     ):
         self.article_repo = article_repo
@@ -31,6 +33,7 @@ class ProcessingPipeline:
         self.embedding_service = embedding_service
         self.clustering_service = clustering_service
         self.summarization_service = summarization_service
+        self.classification_service = classification_service
         self.ollama = ollama
 
     async def run(self) -> None:
@@ -77,3 +80,11 @@ class ProcessingPipeline:
         )
 
         logger.info("Summarization completed.")
+
+        logger.info("Starting classification...")
+
+        await self.classification_service.process_pending_events(
+            event_repo=self.event_repo,
+        )
+
+        logger.info("Classification completed.")

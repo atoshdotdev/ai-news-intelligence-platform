@@ -7,6 +7,7 @@ from ainews.core.repositories.article_repository import ArticleRepository
 from ainews.core.repositories.chunk_repository import ChunkRepository
 from ainews.core.repositories.event_repository import EventRepository
 from ainews.core.services.chunking_service import ChunkingService
+from ainews.core.services.classification_service import ClassificationService
 from ainews.core.services.clustering_service import ClusteringService
 from ainews.core.services.embedding_service import EmbeddingService
 from ainews.core.services.ner_service import NERService
@@ -21,6 +22,7 @@ class ProcessingServices:
     embedding: EmbeddingService
     clustering: ClusteringService
     summarization: SummarizationService
+    classification: ClassificationService
     ollama: OllamaClient
 
 
@@ -73,6 +75,14 @@ def build_services(config: Config) -> ProcessingServices:
         refresh_hours=config.summarization.refresh_hours,
     )
 
+    classification_service = ClassificationService(
+        event_batch_size=config.classification.event_batch_size,
+        model=config.classification.model,
+        device=config.classification.device,
+        candidate_labels=config.classification.candidate_labels,
+        multi_label=config.classification.multi_label,
+    )
+
     return ProcessingServices(
         chunking=chunking_service,
         ner=ner_service,
@@ -80,6 +90,7 @@ def build_services(config: Config) -> ProcessingServices:
         ollama=ollama,
         clustering=clustering_service,
         summarization=summarization_service,
+        classification=classification_service,
     )
 
 
@@ -101,4 +112,5 @@ def build_pipeline(
         ollama=services.ollama,
         clustering_service=services.clustering,
         summarization_service=services.summarization,
+        classification_service=services.classification,
     )

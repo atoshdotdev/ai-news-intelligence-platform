@@ -96,6 +96,7 @@ class EventRepository:
         entities: list[dict] | None = None,
         last_published_at: datetime | None = None,
         summary_last_published_at: datetime | None = None,
+        category: str | None = None,
     ) -> None:
         values: dict[str, object] = {}
 
@@ -104,6 +105,9 @@ class EventRepository:
 
         if summary is not None:
             values["summary"] = summary
+
+        if category is not None:
+            values["category"] = category
 
         if embedding is not None:
             values["embedding"] = list(embedding)
@@ -209,6 +213,26 @@ class EventRepository:
             .order_by(
                 Event.last_published_at.asc(),
                 Event.created_at.asc(),
+            )
+            .limit(limit)
+        )
+
+        result = await self.session.execute(stmt)
+
+        return list(result.scalars().all())
+
+    async def get_events_pending_classification(
+        self,
+        limit: int,
+    ) -> list[Event]:
+        stmt = (
+            select(Event)
+            .where(
+                Event.summary.is_not(None),
+                Event.category.is_(None),
+            )
+            .order_by(
+                Event.updated_at.asc(),
             )
             .limit(limit)
         )

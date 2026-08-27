@@ -1,7 +1,6 @@
 from ollama import AsyncClient
 
 from ainews.core.config.config import Config
-from ainews.core.utils.logger import logger
 
 
 class OllamaClient:
@@ -30,11 +29,12 @@ class OllamaClient:
 
     async def summarize(
         self,
-        messages: list,
+        prompt: str,
     ) -> str:
-        response = await self.client.chat(
+        response = await self.client.generate(
             model=self.config.summarization.model,
-            messages=messages,
+            system=self.config.summarization.system_prompt,
+            prompt=prompt,
             options={
                 "temperature": self.config.summarization.temperature,
                 "top_p": self.config.summarization.top_p,
@@ -45,16 +45,6 @@ class OllamaClient:
             think=False,
         )
 
-        logger.info(
-            "Ollama summarization response: %r",
-            response,
-        )
-
-        content = response["message"]["content"]
-
-        logger.info(
-            "Ollama summarization content length: %d",
-            len(content) if content else 0,
-        )
+        content = response.response
 
         return content.strip() if content else ""

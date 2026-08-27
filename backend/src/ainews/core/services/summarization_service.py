@@ -38,16 +38,10 @@ class SummarizationService:
         )
 
         if not events:
-            logger.info("No events pending summarization.")
             return
 
         try:
             for event in events:
-                logger.info(
-                    "Summarizing event: event=%s",
-                    event.id,
-                )
-
                 articles = await event_repo.get_articles(event.id)
 
                 if not articles:
@@ -59,38 +53,9 @@ class SummarizationService:
 
                 selected_articles = self._select_articles(articles)
 
-                logger.info(
-                    "Selected articles: event=%s total=%d selected=%d",
-                    event.id,
-                    len(articles),
-                    len(selected_articles),
-                )
-
                 prompt = self._build_prompt(selected_articles)
 
-                logger.info(
-                    "Calling Ollama for event summary: event=%s",
-                    event.id,
-                )
-
-                summary = await self.ollama.summarize(
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": self.system_prompt,
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt,
-                        },
-                    ],
-                )
-
-                logger.info(
-                    "Ollama returned summary: event=%s chars=%d",
-                    event.id,
-                    len(summary) if summary else 0,
-                )
+                summary = await self.ollama.summarize(prompt)
 
                 if not summary:
                     logger.warning(
@@ -103,11 +68,6 @@ class SummarizationService:
                     event_id=event.id,
                     summary=summary,
                     summary_last_published_at=event.last_published_at,
-                )
-
-                logger.info(
-                    "Summary queued for database update: event=%s",
-                    event.id,
                 )
 
             await event_repo.commit()
