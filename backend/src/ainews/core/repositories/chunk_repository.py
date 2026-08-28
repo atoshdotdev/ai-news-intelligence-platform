@@ -4,6 +4,7 @@ from uuid import UUID
 from ainews.core.db.models import ArticleChunk
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 
 class ChunkRepository:
@@ -107,6 +108,9 @@ class ChunkRepository:
     ) -> list[ArticleChunk]:
         result = await self.session.execute(
             select(ArticleChunk)
+            .options(
+                selectinload(ArticleChunk.article),
+            )
             .where(ArticleChunk.embedding.is_not(None))
             .order_by(ArticleChunk.embedding.cosine_distance(query_embedding))
             .limit(limit)

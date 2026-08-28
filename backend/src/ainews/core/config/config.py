@@ -1,12 +1,68 @@
 from dataclasses import dataclass
 
+from ainews.core.config.categories import NEWS_CATEGORIES
+
+RAG_CHAT_SYSTEM_PROMPT = """\
+You are an AI news assistant for a retrieval-augmented news system.
+
+Answer the user's question using ONLY the information contained in the
+provided news context.
+
+Rules:
+1. Use ONLY information explicitly supported by the provided context.
+2. Do not use your own background knowledge to add facts that are not in the
+   context.
+3. Do not invent facts, names, dates, numbers, locations, causes, events, or
+   outcomes.
+4. When the context does not contain enough information to answer the
+   question, clearly say that the available news sources do not provide
+   enough information.
+5. Do not guess or fill missing information with assumptions.
+6. When sources provide conflicting information, acknowledge the conflict
+   and present the uncertainty rather than choosing an unsupported version.
+7. Combine information from multiple sources when useful to answer the
+   question.
+8. Distinguish confirmed facts from claims, allegations, predictions, or
+   speculation reported in the context.
+9. Answer the user's actual question directly and concisely.
+10. Do not mention the retrieval system, RAG, context, prompt, instructions,
+    or your reasoning.
+11. Do not mention that you are using sources unless it is useful for
+    explaining uncertainty or conflicting information.
+12. Do not begin with phrases such as "Here is a summary", "Based on the
+    context", "According to the provided context", or similar preambles.
+13. Start directly with the answer.
+14. Use clear paragraphs or short bullet points when they improve readability.
+15. Never fabricate a citation, URL, source, or attribution.
+"""
+
+RAG_CHAT_USER_PROMPT = """\
+NEWS CONTEXT:
+
+{context}
+
+USER QUESTION:
+
+{question}
+"""
+
 
 @dataclass
 class ChatConfig:
     model: str = "llama3.1:8b"
-    temperature: float = 0.7
+    temperature: float = 0.5
     top_p: float = 0.9
-    max_tokens: int = 3072
+    context_size: int = 8192
+    max_tokens: int = 4096
+    system_prompt: str = RAG_CHAT_SYSTEM_PROMPT
+    user_prompt: str = RAG_CHAT_USER_PROMPT
+
+
+@dataclass
+class RAGConfig:
+    retrieval_limit: int = 30
+    result_limit: int = 6
+    max_context_chars: int = 6000
 
 
 @dataclass
@@ -106,38 +162,40 @@ class SummarizationConfig:
 class ClassificationConfig:
     model: str = "facebook/bart-large-mnli"
     device: str = "cuda"
-    candidate_labels: tuple[str, ...] = (
-        "Politics",
-        "Business",
-        "Technology",
-        "Science",
-        "Health",
-        "Environment",
-        "World",
-        "Sports",
-        "Crime",
-        "War",
-        "Education",
-        "Entertainment",
-        "Other",
-    )
+    categories = NEWS_CATEGORIES
     multi_label: bool = False
     event_batch_size: int = 10
+
+    @property
+    def candidate_labels(self) -> tuple[str, ...]:
+        return tuple(category.id for category in self.categories)
+
+
+@dataclass
+class RerankerConfig:
+    model: str = "BAAI/bge-reranker-v2-m3"
+    device: str = "cuda"
 
 
 class Config:
     def __init__(self):
         self.chat = ChatConfig()
+        self.rag = RAGConfig()
         self.embedding = EmbeddingConfig()
         self.ner = NERConfig()
         self.chunking = ChunkingConfig()
         self.clustering = ClusteringConfig()
         self.summarization = SummarizationConfig()
         self.classification = ClassificationConfig()
+        self.reranker = RerankerConfig()
 
     def update_chat(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self.chat, k, v)
+
+    def update_rag(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self.rag, k, v)
 
     def update_embedding(self, **kwargs):
         for k, v in kwargs.items():
@@ -162,3 +220,7 @@ class Config:
     def update_classification(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self.classification, k, v)
+
+    def update_reranker(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self.reranker, k, v)

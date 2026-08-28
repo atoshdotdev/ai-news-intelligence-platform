@@ -9,15 +9,31 @@ from ainews.api.routes import router as api_router
 from ainews.core.clients.ollama_client import OllamaClient
 from ainews.core.config.config import Config
 from ainews.core.config.settings import settings
+from ainews.core.services.embedding_service import EmbeddingService
+from ainews.core.services.reranker_service import RerankerService
 from ainews.core.utils.logger import logger
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.config = Config()
+    config = Config()
+
+    app.state.config = config
     app.state.ollama = OllamaClient(
         base_url=settings.ollama_host,
-        config=app.state.config,
+        config=config,
+    )
+
+    app.state.embedding_service = EmbeddingService(
+        model_name=config.embedding.model,
+        article_batch_size=config.embedding.article_batch_size,
+        processing_batch_size=config.embedding.processing_batch_size,
+        device=config.embedding.device,
+    )
+
+    app.state.reranker_service = RerankerService(
+        model_name=config.reranker.model,
+        device=config.reranker.device,
     )
 
     yield

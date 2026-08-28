@@ -10,16 +10,28 @@ class OllamaClient:
 
     async def chat_stream(
         self,
-        messages: list,
-        model: str | None = None,
+        user_prompt: str,
     ):
+
+        messages = [
+            {
+                "role": "system",
+                "content": self.config.chat.system_prompt,
+            },
+            {
+                "role": "user",
+                "content": user_prompt,
+            },
+        ]
+
         stream = await self.client.chat(
-            model=model or self.config.chat.model,
+            model=self.config.chat.model,
             messages=messages,
             options={
                 "temperature": self.config.chat.temperature,
                 "top_p": self.config.chat.top_p,
                 "num_predict": self.config.chat.max_tokens,
+                "num_ctx": self.config.chat.context_size,
             },
             stream=True,
         )

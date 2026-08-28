@@ -1,26 +1,62 @@
-from ainews.core.clients.ollama_client import OllamaClient
-from ainews.core.repositories.article_repository import ArticleRepository
+from ainews.core.db.models.article_chunk import ArticleChunk
+from ainews.core.repositories.chunk_repository import ChunkRepository
+from ainews.core.services.embedding_service import EmbeddingService
+from ainews.core.services.reranker_service import RerankerService
 
 
 class RAGService:
-    def __init__(self, article_repo: ArticleRepository, ollama: OllamaClient):
-        self.article_repo = article_repo
-        self.ollama = ollama
+    def __init__(
+        self,
+        chunk_repo: ChunkRepository,
+        embedding_service: EmbeddingService,
+        reranker_service: RerankerService,
+        retrieval_limit: int,
+        result_limit: int,
+        max_context_chars: int,
+    ):
+        self.chunk_repo = chunk_repo
+        self.embedding_service = embedding_service
+        self.reranker_service = reranker_service
+        self.retrieval_limit = retrieval_limit
+        self.result_limit = result_limit
+        self.max_context_chars = max_context_chars
 
     async def retrieve(self, query: str):
-        embedding = await self.ollama.embed(query)
+        query_embedding = self.embedding_service.encode_query(query)
 
-        query_embedding = embedding[0]
-
-        return await self.article_repo.search_similar(
+        chunks = await self.chunk_repo.search_similar(
             query_embedding=query_embedding,
-            limit=3,
+            limit=self.retrieval_limit,
         )
 
-    def build_context(self, articles):
-        MAX_ARTICLES = 3
+        if not chunks:
+            return []
 
-        return "\n\n".join(
-            f"[Source {i + 1}]\nTitle: {a.title}\nURL: {a.url}\nSnippet: {a.content}"
-            for i, a in enumerate(articles[:MAX_ARTICLES])
+        chunks = self.reranker_service.rank(
+            query=query,
+            chunks=chunks,
         )
+
+        return chunks[: self.result_limit]
+
+    def build_context(self, chunks: list[ArticleChunk]) -> str:
+        sections = []
+        current_chars = 0
+
+        for index, chunk in enumerate(chunks, start=1):
+            article = chunk.article
+
+            section = (
+                f"[Source {index}]\n"
+                f"Title: {article.title}\n"
+                f"URL: {article.url}\n\n"
+                f"{chunk.content}"
+            )
+
+            if current_chars + len(section) > self.max_context_chars:
+                break
+
+            sections.append(section)
+            current_chars += len(section)
+
+        return "\n\n".join(sections)
