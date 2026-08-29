@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from ainews.core.clients.ollama_client import OllamaClient
+from ainews.core.clients.llm_client import LLMClient
 from ainews.core.config.config import Config
 from ainews.core.config.settings import settings
 from ainews.core.repositories.article_repository import ArticleRepository
@@ -23,11 +23,11 @@ class ProcessingServices:
     clustering: ClusteringService
     summarization: SummarizationService
     classification: ClassificationService
-    ollama: OllamaClient
+    llm_client: LLMClient
 
 
 def build_services(config: Config) -> ProcessingServices:
-    ollama = OllamaClient(
+    llm_client = LLMClient(
         settings.ollama_host,
         config,
     )
@@ -66,7 +66,7 @@ def build_services(config: Config) -> ProcessingServices:
     )
 
     summarization_service = SummarizationService(
-        ollama=ollama,
+        llm_client=llm_client,
         event_batch_size=config.summarization.event_batch_size,
         max_articles_per_event=config.summarization.max_articles_per_event,
         article_max_chars=config.summarization.article_max_chars,
@@ -87,7 +87,7 @@ def build_services(config: Config) -> ProcessingServices:
         chunking=chunking_service,
         ner=ner_service,
         embedding=embedding_service,
-        ollama=ollama,
+        llm_client=llm_client,
         clustering=clustering_service,
         summarization=summarization_service,
         classification=classification_service,
@@ -109,7 +109,6 @@ def build_pipeline(
         chunking_service=services.chunking,
         ner_service=services.ner,
         embedding_service=services.embedding,
-        ollama=services.ollama,
         clustering_service=services.clustering,
         summarization_service=services.summarization,
         classification_service=services.classification,

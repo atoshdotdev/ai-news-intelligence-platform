@@ -1,4 +1,4 @@
-from ainews.core.clients.ollama_client import OllamaClient
+from ainews.core.clients.llm_client import LLMClient
 from ainews.core.db.models import Article
 from ainews.core.repositories.event_repository import EventRepository
 from ainews.core.utils.logger import logger
@@ -12,7 +12,7 @@ class SummarizationService:
 
     def __init__(
         self,
-        ollama: OllamaClient,
+        llm_client: LLMClient,
         event_batch_size: int,
         max_articles_per_event: int,
         article_max_chars: int,
@@ -20,7 +20,7 @@ class SummarizationService:
         system_prompt: str,
         user_prompt: str,
     ):
-        self.ollama = ollama
+        self.llm_client = llm_client
         self.max_articles_per_event = max_articles_per_event
         self.article_max_chars = article_max_chars
         self.event_batch_size = event_batch_size
@@ -55,7 +55,7 @@ class SummarizationService:
 
                 prompt = self._build_prompt(selected_articles)
 
-                summary = await self.ollama.summarize(prompt)
+                summary = await self.llm_client.summarize(prompt)
 
                 if not summary:
                     logger.warning(

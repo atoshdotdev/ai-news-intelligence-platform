@@ -1,4 +1,3 @@
-from ainews.core.clients.ollama_client import OllamaClient
 from ainews.core.repositories.article_repository import ArticleRepository
 from ainews.core.repositories.chunk_repository import ChunkRepository
 from ainews.core.repositories.event_repository import EventRepository
@@ -23,7 +22,6 @@ class ProcessingPipeline:
         clustering_service: ClusteringService,
         summarization_service: SummarizationService,
         classification_service: ClassificationService,
-        ollama: OllamaClient,
     ):
         self.article_repo = article_repo
         self.chunk_repo = chunk_repo
@@ -34,7 +32,6 @@ class ProcessingPipeline:
         self.clustering_service = clustering_service
         self.summarization_service = summarization_service
         self.classification_service = classification_service
-        self.ollama = ollama
 
     async def run(self) -> None:
         logger.info("Starting chunking...")

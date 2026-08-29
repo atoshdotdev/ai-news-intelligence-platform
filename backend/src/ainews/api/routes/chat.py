@@ -1,11 +1,9 @@
-import json
-
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from ainews.api.dependencies.ai import (
     get_embedding_service,
-    get_ollama,
+    get_llm_client,
     get_reranker_service,
 )
 from ainews.core.config.config import Config
@@ -23,7 +21,7 @@ router = APIRouter()
 def get_services(
     request: Request,
     session=Depends(get_session),
-    ollama=Depends(get_ollama),
+    llm_client=Depends(get_llm_client),
     embedding_service: EmbeddingService = Depends(get_embedding_service),
     reranker_service: RerankerService = Depends(get_reranker_service),
 ):
@@ -39,92 +37,42 @@ def get_services(
         max_context_chars=config.rag.max_context_chars,
     )
 
-    chat = ChatService(ollama, user_prompt=config.chat.user_prompt)
+    chat = ChatService(llm_client, user_prompt=config.chat.user_prompt)
 
     return rag, chat
 
 
-@router.post("/stream")
+@router.post("/")
 async def chat_stream(
     payload: ChatRequest,
     deps: tuple[RAGService, ChatService] = Depends(get_services),
 ):
-    message = payload.message
+    message = payload.messages[-1].text
+
+    if not message:
+        raise HTTPException(
+            status_code=400,
+            detail="No user message provided",
+        )
+
     rag_service, chat_service = deps
 
     chunks = await rag_service.retrieve(message)
     context = rag_service.build_context(chunks)
 
     async def event_stream():
-        try:
-            if chunks:
-                seen_articles = set()
-                sources = []
-
-                for chunk in chunks:
-                    article = chunk.article
-
-                    if article.id in seen_articles:
-                        continue
-
-                    seen_articles.add(article.id)
-
-                    sources.append(
-                        {
-                            "title": article.title,
-                            "url": article.url,
-                        }
-                    )
-
-                yield (
-                    f"data: {
-                        json.dumps(
-                            {
-                                'type': 'sources',
-                                'sources': sources,
-                            }
-                        )
-                    }\n\n"
-                )
-
-            async for token in chat_service.stream_chat(
-                question=message,
-                context=context,
-            ):
-                yield (
-                    f"data: {
-                        json.dumps(
-                            {
-                                'type': 'token',
-                                'content': token,
-                            }
-                        )
-                    }\n\n"
-                )
-
-            yield (
-                f"data: {
-                    json.dumps(
-                        {
-                            'type': 'done',
-                        }
-                    )
-                }\n\n"
-            )
-
-        except Exception as e:
-            yield (
-                f"data: {
-                    json.dumps(
-                        {
-                            'type': 'error',
-                            'message': str(e),
-                        }
-                    )
-                }\n\n"
-            )
+        async for token in chat_service.stream_chat(
+            question=message,
+            context=context,
+        ):
+            yield token
 
     return StreamingResponse(
         event_stream(),
-        media_type="text/event-stream",
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "x-vercel-ai-data-stream": "v1",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
     )

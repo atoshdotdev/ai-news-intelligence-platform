@@ -51,7 +51,6 @@ USER QUESTION:
 class ChatConfig:
     model: str = "llama3.1:8b"
     temperature: float = 0.5
-    top_p: float = 0.9
     context_size: int = 8192
     max_tokens: int = 4096
     system_prompt: str = RAG_CHAT_SYSTEM_PROMPT
@@ -147,7 +146,6 @@ ARTICLES:
 class SummarizationConfig:
     model: str = "llama3.2:1b"
     temperature: float = 0.1
-    top_p: float = 0.95
     context_size: int = 8192
     max_tokens: int = 512
     article_max_chars: int = 8000

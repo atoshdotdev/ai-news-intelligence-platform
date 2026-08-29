@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from ainews.api.routes import router as api_router
-from ainews.core.clients.ollama_client import OllamaClient
+from ainews.core.clients.llm_client import LLMClient
 from ainews.core.config.config import Config
 from ainews.core.config.settings import settings
 from ainews.core.services.embedding_service import EmbeddingService
@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     config = Config()
 
     app.state.config = config
-    app.state.ollama = OllamaClient(
+    app.state.llm_client = LLMClient(
         base_url=settings.ollama_host,
         config=config,
     )

@@ -19,7 +19,7 @@ common = [
 api = [
     { include-group = "common" },
     "fastapi[standard]>=0.136.1",
-    "ollama>=0.6.2",
+    "openai>=2.37.0",
     "sentence-transformers>=5.6.0",
 ]
 
@@ -33,7 +33,7 @@ processing = [
     { include-group = "common" },
     "gliner>=0.2.27",
     "langchain-text-splitters>=1.1.2",
-    "ollama>=0.6.2",
+    "openai>=2.37.0",
     "sentence-transformers>=5.6.0",
 ]
 

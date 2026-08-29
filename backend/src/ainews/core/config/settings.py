@@ -8,7 +8,7 @@ class Settings(BaseSettings):
         description="The URL for the database connection",
     )
     ollama_host: str = Field(
-        default="http://ollama:11434",
+        default="http://ollama:11434/v1",
         description="The URL for the Ollama API",
     )
     web_crawler_url: str = Field(
