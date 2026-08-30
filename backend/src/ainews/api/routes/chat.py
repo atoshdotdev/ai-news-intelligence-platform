@@ -14,6 +14,7 @@ from ainews.core.services.chat_service import ChatService
 from ainews.core.services.embedding_service import EmbeddingService
 from ainews.core.services.rag_service import RAGService
 from ainews.core.services.reranker_service import RerankerService
+from ainews.core.utils.chat import to_llm_messages
 
 router = APIRouter()
 
@@ -37,7 +38,11 @@ def get_services(
         max_context_chars=config.rag.max_context_chars,
     )
 
-    chat = ChatService(llm_client, user_prompt=config.chat.user_prompt)
+    chat = ChatService(
+        llm_client,
+        system_prompt=config.chat.system_prompt,
+        user_prompt=config.chat.user_prompt,
+    )
 
     return rag, chat
 
@@ -47,22 +52,26 @@ async def chat_stream(
     payload: ChatRequest,
     deps: tuple[RAGService, ChatService] = Depends(get_services),
 ):
-    message = payload.messages[-1].text
+    message = payload.last_user_message
 
-    if not message:
+    if message is None:
         raise HTTPException(
             status_code=400,
-            detail="No user message provided",
+            detail="No user message found",
         )
+
+    query = message.text
 
     rag_service, chat_service = deps
 
-    chunks = await rag_service.retrieve(message)
+    chunks = await rag_service.retrieve(query)
     context = rag_service.build_context(chunks)
+
+    messages = to_llm_messages(payload.messages)
 
     async def event_stream():
         async for token in chat_service.stream_chat(
-            question=message,
+            messages=messages,
             context=context,
         ):
             yield token

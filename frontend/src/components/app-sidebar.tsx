@@ -4,6 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 
 import { NavMain } from "@/components/nav-main";
+import { RecentChats } from "@/features/chat/components/recent-chats";
+import { ChatActions } from "@/features/chat/components/chat-actions";
 
 import {
   Sidebar,
@@ -18,30 +20,26 @@ import {
   WaypointsIcon,
   CommandIcon,
   NewspaperIcon,
-  ChartBarStackedIcon,
   BotMessageSquare,
 } from "lucide-react";
+
+import { Separator } from "@/components/ui/separator";
 
 const navMain = [
   {
     title: "Feed",
-    url: "/dashboard/feed",
+    url: "/feed",
     icon: <NewspaperIcon />,
   },
   {
     title: "Chat",
-    url: "/dashboard/chat",
+    url: "/chat",
     icon: <BotMessageSquare />,
   },
   {
     title: "Sources",
-    url: "/dashboard/sources",
+    url: "/sources",
     icon: <WaypointsIcon />,
-  },
-  {
-    title: "Categories",
-    url: "/dashboard/categories",
-    icon: <ChartBarStackedIcon />,
   },
 ];
 
@@ -51,7 +49,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton render={<Link href="/dashboard" />}>
+            <SidebarMenuButton render={<Link href="/" />}>
               <CommandIcon className="size-6" />
               <span className="text-base font-semibold">NeuralPress</span>
             </SidebarMenuButton>
@@ -61,6 +59,15 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent>
         <NavMain items={navMain} />
+
+        <Separator
+          orientation="horizontal"
+          className="h-4 data-horizontal:self-auto"
+        />
+
+        <ChatActions />
+
+        <RecentChats />
       </SidebarContent>
     </Sidebar>
   );

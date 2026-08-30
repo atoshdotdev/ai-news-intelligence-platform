@@ -1,8 +1,11 @@
 from collections.abc import AsyncGenerator
+from typing import cast
 
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessageParam
 
 from ainews.core.config.config import Config
+from ainews.core.schemas.chat_schemas import LLMMessage
 
 
 class LLMClient:
@@ -18,21 +21,22 @@ class LLMClient:
         self.config = config
 
     async def chat_stream(
-        self,
-        user_prompt: str,
+        self, messages: list[LLMMessage]
     ) -> AsyncGenerator[str, None]:
+        openai_messages = cast(
+            list[ChatCompletionMessageParam],
+            [
+                {
+                    "role": message.role,
+                    "content": message.content,
+                }
+                for message in messages
+            ],
+        )
+
         stream = await self.client.chat.completions.create(
             model=self.config.chat.model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": self.config.chat.system_prompt,
-                },
-                {
-                    "role": "user",
-                    "content": user_prompt,
-                },
-            ],
+            messages=openai_messages,
             temperature=self.config.chat.temperature,
             max_completion_tokens=self.config.chat.max_tokens,
             stream=True,

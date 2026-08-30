@@ -17,7 +17,7 @@ export function ChatMessage({
     return (
       <Message align="end">
         <MessageContent>
-          <Bubble align="end" variant="muted">
+          <Bubble align="end" variant="default">
             <BubbleContent>
               {message.parts
                 .filter((part) => part.type === "text")

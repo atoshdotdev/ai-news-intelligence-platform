@@ -17,12 +17,11 @@ export default function DashboardLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar variant="floating" />
 
-      <SidebarInset>
+      <SidebarInset className="flex h-svh flex-col">
         <SiteHeader />
-
-        <main className="flex flex-1 flex-col p-6">{children}</main>
+        {children}
       </SidebarInset>
     </SidebarProvider>
   );

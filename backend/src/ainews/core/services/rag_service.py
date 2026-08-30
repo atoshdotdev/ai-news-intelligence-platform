@@ -49,6 +49,7 @@ class RAGService:
             section = (
                 f"[Source {index}]\n"
                 f"Title: {article.title}\n"
+                f"Published: {article.published_at}\n"
                 f"URL: {article.url}\n\n"
                 f"{chunk.content}"
             )

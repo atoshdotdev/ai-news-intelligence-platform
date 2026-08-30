@@ -26,14 +26,13 @@ export default function RootLayout({
     <html
       lang="en"
       className={cn(
-        "h-full",
         "antialiased",
         geistMono.variable,
         "font-sans",
         inter.variable,
       )}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="dark">
         <Toaster />
         <Providers>{children}</Providers>
       </body>

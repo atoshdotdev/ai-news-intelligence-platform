@@ -35,7 +35,7 @@ export default function SourcesPage() {
   const totalPages = metadata?.total_pages ?? 1;
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6">
+    <div className="w-full max-w-7xl mx-auto space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Sources</h1>

@@ -49,7 +49,7 @@ USER QUESTION:
 
 @dataclass
 class ChatConfig:
-    model: str = "llama3.1:8b"
+    model: str = "llama3.2:3b"
     temperature: float = 0.5
     context_size: int = 8192
     max_tokens: int = 4096
@@ -59,9 +59,9 @@ class ChatConfig:
 
 @dataclass
 class RAGConfig:
-    retrieval_limit: int = 30
-    result_limit: int = 6
-    max_context_chars: int = 6000
+    retrieval_limit: int = 50
+    result_limit: int = 10
+    max_context_chars: int = 10000
 
 
 @dataclass
