@@ -52,6 +52,11 @@ class Event(Base):
         nullable=True,
     )
 
+    image_url: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     last_published_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,

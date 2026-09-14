@@ -95,10 +95,20 @@ class ClusteringService:
                     default=None,
                 )
 
+                image_url = next(
+                    (
+                        event_article.image_url
+                        for event_article in event_articles
+                        if event_article.image_url
+                    ),
+                    None,
+                )
+
                 await event_repo.update_event(
                     event_id=best_event.id,
                     embedding=event_embedding,
                     entities=event_entities,
+                    image_url=image_url,
                     last_published_at=last_published_at,
                 )
 

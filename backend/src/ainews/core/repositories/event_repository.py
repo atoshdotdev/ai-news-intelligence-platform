@@ -3,7 +3,8 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from ainews.core.db.models import Article, Event
-from sqlalchemy import func, or_, select, update
+from ainews.core.schemas.event_schemas import EventFilters, EventListItem
+from sqlalchemy import ColumnElement, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -16,6 +17,82 @@ class EventRepository:
 
     async def rollback(self) -> None:
         await self.session.rollback()
+
+    async def get_all(
+        self,
+        filters: EventFilters,
+        offset: int,
+        limit: int,
+    ) -> tuple[list[EventListItem], int]:
+        conditions: list[ColumnElement[bool]] = [
+            Event.summary.is_not(None),
+            Event.category.is_not(None),
+        ]
+
+        if filters.category:
+            conditions.append(Event.category == filters.category)
+
+        if filters.search:
+            search = f"%{filters.search}%"
+
+            conditions.append(
+                or_(
+                    Event.title.ilike(search),
+                    Event.summary.ilike(search),
+                )
+            )
+
+        if filters.from_date:
+            conditions.append(Event.last_published_at >= filters.from_date)
+
+        if filters.to_date:
+            conditions.append(Event.last_published_at <= filters.to_date)
+
+        count_query = select(func.count(Event.id)).where(*conditions)
+
+        total_items = await self.session.scalar(count_query) or 0
+
+        query = (
+            select(
+                Event.id,
+                Event.title,
+                Event.summary,
+                Event.category,
+                Event.image_url,
+                Event.last_published_at,
+                Event.created_at,
+                func.count(Article.id).label("article_count"),
+            )
+            .outerjoin(
+                Article,
+                Article.event_id == Event.id,
+            )
+            .where(*conditions)
+            .group_by(Event.id)
+            .order_by(
+                Event.last_published_at.desc().nullslast(),
+                Event.created_at.desc(),
+            )
+            .offset(offset)
+            .limit(limit)
+        )
+
+        result = await self.session.execute(query)
+
+        rows = [
+            EventListItem(
+                id=row.id,
+                title=row.title,
+                summary=row.summary,
+                category=row.category,
+                image_url=row.image_url,
+                last_published_at=row.last_published_at,
+                article_count=row.article_count,
+            )
+            for row in result
+        ]
+
+        return rows, total_items
 
     async def get_candidate_events(
         self,
@@ -94,6 +171,7 @@ class EventRepository:
         summary: str | None = None,
         embedding: Sequence[float] | None = None,
         entities: list[dict] | None = None,
+        image_url: str | None = None,
         last_published_at: datetime | None = None,
         summary_last_published_at: datetime | None = None,
         category: str | None = None,
@@ -114,6 +192,9 @@ class EventRepository:
 
         if entities is not None:
             values["entities"] = entities
+
+        if image_url is not None:
+            values["image_url"] = image_url
 
         if last_published_at is not None:
             values["last_published_at"] = last_published_at
