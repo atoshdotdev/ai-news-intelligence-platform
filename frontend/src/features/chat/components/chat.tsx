@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { TextStreamChatTransport } from "ai";
+import { TextStreamChatTransport, DefaultChatTransport } from "ai";
 import { type ChatUIMessage } from "@/features/chat/tools/index";
 import { ChatMessage } from "@/features/chat/components/chat-message";
 import { PromptForm } from "@/features/chat/components/prompt-form";
@@ -23,13 +23,11 @@ import {
 } from "@/components/ui/message-scroller";
 
 export function Chat() {
-  const { messages, sendMessage, status, stop, error } = useChat<ChatUIMessage>(
-    {
-      transport: new TextStreamChatTransport({
-        api: `${process.env.NEXT_PUBLIC_API_URL}/chat`,
-      }),
-    },
-  );
+  const { messages, sendMessage, status, stop, error } = useChat({
+    transport: new DefaultChatTransport({
+      api: `${process.env.NEXT_PUBLIC_API_URL}/chat`,
+    }),
+  });
 
   const isBusy = status === "submitted" || status === "streaming";
 

@@ -1,3 +1,6 @@
+import json
+from uuid import uuid4
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
@@ -52,6 +55,7 @@ async def chat_stream(
     payload: ChatRequest,
     deps: tuple[RAGService, ChatService] = Depends(get_services),
 ):
+    print("Received chat request:", payload)
     message = payload.last_user_message
 
     if message is None:
@@ -66,21 +70,74 @@ async def chat_stream(
 
     chunks = await rag_service.retrieve(query)
     context = rag_service.build_context(chunks)
+    sources = rag_service.build_sources(chunks)
 
     messages = to_llm_messages(payload.messages)
 
     async def event_stream():
+        message_id = str(uuid4())
+        text_id = str(uuid4())
+
+        yield f"data: {
+            json.dumps(
+                {
+                    'type': 'start',
+                    'messageId': message_id,
+                }
+            )
+        }\n\n"
+
+        yield f"data: {
+            json.dumps(
+                {
+                    'type': 'text-start',
+                    'id': text_id,
+                }
+            )
+        }\n\n"
+
         async for token in chat_service.stream_chat(
             messages=messages,
             context=context,
         ):
-            yield token
+            yield f"data: {
+                json.dumps(
+                    {
+                        'type': 'text-delta',
+                        'id': text_id,
+                        'delta': token,
+                    }
+                )
+            }\n\n"
+
+        yield f"data: {
+            json.dumps(
+                {
+                    'type': 'text-end',
+                    'id': text_id,
+                }
+            )
+        }\n\n"
+
+        for source in sources:
+            yield f"data: {
+                json.dumps(
+                    {
+                        'type': 'source-url',
+                        'sourceId': source.source_id,
+                        'url': source.url,
+                        'title': source.title,
+                    }
+                )
+            }\n\n"
+
+        yield "data: [DONE]\n\n"
 
     return StreamingResponse(
         event_stream(),
-        media_type="text/plain; charset=utf-8",
+        media_type="text/event-stream",
         headers={
-            "x-vercel-ai-data-stream": "v1",
+            "x-vercel-ai-ui-message-stream": "v1",
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
         },

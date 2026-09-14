@@ -4,23 +4,32 @@ import { Button } from "@/components/ui/button";
 
 const suggestions = [
   {
-    label: "Tell me a story",
-    prompt:
-      "Tell me a short story. Format it in rich markdown: a title heading, a blockquote, a bulleted list, a table, and some bold and italic text.",
+    label: "What’s in the news today?",
+    prompt: "What are the most important news stories right now?",
   },
   {
-    label: "What's new in Next.js",
+    label: "Explain a major story",
     prompt:
-      "Search the web for the latest Next.js release and summarize what's new.",
+      "What are the most important details about a major recent news story?",
   },
   {
-    label: "Look up a repo",
-    prompt: "What are the GitHub stats for vercel/next.js?",
+    label: "Compare news coverage",
+    prompt:
+      "Compare how different news sources are covering the same major story.",
   },
   {
-    label: "Plan a dinner",
+    label: "What’s trending?",
+    prompt: "What news topics and events are currently trending?",
+  },
+  {
+    label: "Summarize recent events",
     prompt:
-      "Help me plan a birthday dinner — ask me a few clarifying questions first, then suggest a menu.",
+      "Summarize the most important recent events and explain why they matter.",
+  },
+  {
+    label: "Find related stories",
+    prompt:
+      "Find recent news stories that are related to the most important events in the news.",
   },
 ];
 

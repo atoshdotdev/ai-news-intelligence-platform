@@ -38,3 +38,9 @@ class ChatRequest(BaseModel):
                 return message
 
         return None
+
+
+class ChatSource(BaseModel):
+    source_id: str
+    url: str
+    title: str

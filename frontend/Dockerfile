@@ -2,6 +2,7 @@ FROM node:24-slim
 
 ENV PNPM_HOME="/home/node/.local/share/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+ENV CI=true
 
 RUN corepack enable
 
@@ -18,7 +19,7 @@ RUN --mount=type=cache,id=pnpm,target=/home/node/.local/share/pnpm/store \
 COPY --chown=node:node package.json ./
 
 RUN --mount=type=cache,id=pnpm,target=/home/node/.local/share/pnpm/store \
-    pnpm install --offline
+    pnpm install
 
 COPY --chown=node:node . .
 

@@ -51,7 +51,7 @@ export function SourcesPart({ parts }: { parts: ChatMessagePart[] }) {
   }
 
   const count = sources.length;
-  const label = `Searched ${count} ${count === 1 ? "website" : "websites"}`;
+  const label = `${count} ${count === 1 ? "news source" : "news sources"}`;
 
   return (
     <div className="p-1">

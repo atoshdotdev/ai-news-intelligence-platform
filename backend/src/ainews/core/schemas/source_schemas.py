@@ -1,4 +1,3 @@
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -23,7 +22,7 @@ class SourceBlacklistRead(SourceBlacklistBase):
 class SourceBase(BaseModel):
     name: str
     url: str
-    selector: Optional[str] = None
+    selector: str | None = None
 
 
 class SourceCreate(SourceBase):

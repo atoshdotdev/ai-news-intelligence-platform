@@ -47,7 +47,12 @@ class LLMClient:
             if not chunk.choices:
                 continue
 
-            content = chunk.choices[0].delta.content
+            choice = chunk.choices[0]
+
+            if choice.finish_reason == "stop":
+                continue
+
+            content = choice.delta.content
 
             if content:
                 yield content

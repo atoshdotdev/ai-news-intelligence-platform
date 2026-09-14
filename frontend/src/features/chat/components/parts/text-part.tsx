@@ -9,7 +9,7 @@ export function TextPart({ part }: { part: TextMessagePart }) {
   }
 
   return (
-    <div className="typeset typeset-docs px-1.5">
+    <div className="prose prose-sm prose-invert max-w-none px-1.5">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
     </div>
   );

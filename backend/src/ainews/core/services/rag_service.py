@@ -1,5 +1,6 @@
 from ainews.core.db.models.article_chunk import ArticleChunk
 from ainews.core.repositories.chunk_repository import ChunkRepository
+from ainews.core.schemas.chat_schemas import ChatSource
 from ainews.core.services.embedding_service import EmbeddingService
 from ainews.core.services.reranker_service import RerankerService
 
@@ -61,3 +62,26 @@ class RAGService:
             current_chars += len(section)
 
         return "\n\n".join(sections)
+
+    def build_sources(self, chunks: list[ArticleChunk]) -> list[ChatSource]:
+        seen: set[str] = set()
+        sources: list[ChatSource] = []
+
+        for chunk in chunks:
+            article = chunk.article
+            source_id = str(article.id)
+
+            if source_id in seen:
+                continue
+
+            seen.add(source_id)
+
+            sources.append(
+                ChatSource(
+                    source_id=source_id,
+                    url=article.url,
+                    title=article.title,
+                )
+            )
+
+        return sources
