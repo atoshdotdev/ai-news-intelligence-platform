@@ -28,6 +28,35 @@ class EventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class EventArticleRead(BaseModel):
+    id: UUID
+    title: str
+    url: str
+    source_name: str
+    published_at: datetime | None
+    image_url: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EventEntityRead(BaseModel):
+    label: str
+    value: str
+
+
+class EventDetailRead(BaseModel):
+    id: UUID
+    title: str | None
+    summary: str | None
+    category: str | None
+    image_url: str | None
+    entities: list[EventEntityRead] | None
+    last_published_at: datetime | None
+    articles: list[EventArticleRead]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class EventFilters(BaseModel):
     category: str | None = None
     search: str | None = None

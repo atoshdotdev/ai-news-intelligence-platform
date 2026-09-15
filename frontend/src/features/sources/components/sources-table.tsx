@@ -79,7 +79,7 @@ export function SourcesTable({
                 <Button
                   variant="outline"
                   size="default"
-                  onClick={() => router.push(`/dashboard/sources/${s.id}`)}
+                  onClick={() => router.push(`/sources/${s.id}`)}
                 >
                   Manage
                 </Button>

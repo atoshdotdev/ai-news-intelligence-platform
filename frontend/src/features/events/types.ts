@@ -17,12 +17,18 @@ export type EventArticle = {
   image_url: string | null;
 };
 
+export type EventEntity = {
+  label: string;
+  value: string;
+};
+
 export type EventDetail = {
   id: string;
   title: string | null;
   summary: string | null;
   category: string | null;
-  entities: Record<string, unknown>[] | null;
+  image_url: string | null;
+  entities: EventEntity[] | null;
   last_published_at: string | null;
   articles: EventArticle[];
 };

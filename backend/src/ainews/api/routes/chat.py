@@ -55,7 +55,6 @@ async def chat_stream(
     payload: ChatRequest,
     deps: tuple[RAGService, ChatService] = Depends(get_services),
 ):
-    print("Received chat request:", payload)
     message = payload.last_user_message
 
     if message is None:

@@ -1,13 +1,13 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ainews.core.db.database import get_session
 from ainews.core.repositories.event_repository import EventRepository
 from ainews.core.schemas.event_schemas import (
+    EventDetailRead,
     EventFilters,
-    EventRead,
     PaginatedEventsResponse,
 )
 from ainews.core.schemas.pagination_schemas import PaginationParams
@@ -35,16 +35,16 @@ async def read_events(
     )
 
 
-@router.get("/{event_id}", response_model=EventRead)
+@router.get("/{event_id}", response_model=EventDetailRead)
 async def read_event(
     event_id: UUID,
     service: EventService = Depends(get_event_service),
 ):
     event = await service.get_event_by_id(event_id)
 
-    if not event:
+    if event is None:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Event not found",
         )
 

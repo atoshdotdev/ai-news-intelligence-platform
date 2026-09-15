@@ -3,7 +3,14 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from ainews.core.db.models import Article, Event
-from ainews.core.schemas.event_schemas import EventFilters, EventListItem
+from ainews.core.db.models.source import Source
+from ainews.core.schemas.event_schemas import (
+    EventArticleRead,
+    EventDetailRead,
+    EventEntityRead,
+    EventFilters,
+    EventListItem,
+)
 from sqlalchemy import ColumnElement, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -136,6 +143,7 @@ class EventRepository:
             title=article.title,
             embedding=article.embedding,
             entities=article.entities,
+            image_url=article.image_url,
             last_published_at=article.published_at,
         )
 
@@ -214,18 +222,78 @@ class EventRepository:
     async def get_by_id(
         self,
         event_id: UUID,
-    ) -> Event | None:
-        """
-        Gets an event by ID.
-        """
-
-        stmt = select(Event).where(
+    ) -> EventDetailRead | None:
+        event_query = select(
+            Event.id,
+            Event.title,
+            Event.summary,
+            Event.category,
+            Event.image_url,
+            Event.entities,
+            Event.last_published_at,
+        ).where(
             Event.id == event_id,
+            Event.summary.is_not(None),
+            Event.category.is_not(None),
         )
 
-        result = await self.session.execute(stmt)
+        event_result = await self.session.execute(event_query)
+        event = event_result.one_or_none()
 
-        return result.scalar_one_or_none()
+        if event is None:
+            return None
+
+        articles_query = (
+            select(
+                Article.id,
+                Article.title,
+                Article.url,
+                Article.published_at,
+                Article.image_url,
+                Source.name.label("source_name"),
+            )
+            .join(
+                Source,
+                Source.id == Article.source_id,
+            )
+            .where(Article.event_id == event_id)
+            .order_by(
+                Article.published_at.desc().nullslast(),
+            )
+        )
+
+        articles_result = await self.session.execute(articles_query)
+
+        articles = [
+            EventArticleRead(
+                id=row.id,
+                title=row.title,
+                url=row.url,
+                source_name=row.source_name,
+                published_at=row.published_at,
+                image_url=row.image_url,
+            )
+            for row in articles_result
+        ]
+
+        entities = [
+            EventEntityRead(
+                label=entity["label"],
+                value=entity["text"],
+            )
+            for entity in event.entities or []
+        ]
+
+        return EventDetailRead(
+            id=event.id,
+            title=event.title,
+            summary=event.summary,
+            category=event.category,
+            image_url=event.image_url,
+            entities=entities,
+            last_published_at=event.last_published_at,
+            articles=articles,
+        )
 
     async def get_articles(
         self,

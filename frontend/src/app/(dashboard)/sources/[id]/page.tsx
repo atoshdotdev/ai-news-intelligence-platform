@@ -22,7 +22,7 @@ export default function SourceDetailPage() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6">
+    <div className="w-full max-w-7xl mx-auto space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-semibold">{source.name}</h1>
         <a

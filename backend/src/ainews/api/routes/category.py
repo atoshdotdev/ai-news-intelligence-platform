@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/categories",
+    "/",
     response_model=CategoriesResponse,
 )
 async def get_categories(

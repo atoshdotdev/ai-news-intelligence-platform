@@ -85,7 +85,7 @@ class RAGConfig:
 @dataclass
 class EmbeddingConfig:
     model: str = "BAAI/bge-m3"
-    device: str = "cuda"
+    device: str = "cpu"
     dimensions: int = 1024
     article_batch_size: int = 10
     processing_batch_size: int = 16
@@ -96,7 +96,7 @@ class EmbeddingConfig:
 class NERConfig:
     model: str = "EmergentMethods/gliner_medium_news-v2.1"
     threshold: float = 0.6
-    device: str = "cuda"
+    device: str = "cpu"
     article_batch_size: int = 10
     labels: tuple[str, ...] = (
         "person",
@@ -177,7 +177,7 @@ class SummarizationConfig:
 @dataclass
 class ClassificationConfig:
     model: str = "facebook/bart-large-mnli"
-    device: str = "cuda"
+    device: str = "cpu"
     categories = NEWS_CATEGORIES
     multi_label: bool = False
     event_batch_size: int = 10
@@ -190,7 +190,7 @@ class ClassificationConfig:
 @dataclass
 class RerankerConfig:
     model: str = "BAAI/bge-reranker-v2-m3"
-    device: str = "cuda"
+    device: str = "cpu"
 
 
 class Config:

@@ -16,9 +16,7 @@ export function SiteHeader() {
   const pathname = usePathname();
 
   const title =
-    titles[pathname] ??
-    titles[`/${pathname.split("/")[1]}/${pathname.split("/")[2]}`] ??
-    "Dashboard";
+    titles[pathname] ?? titles[`/${pathname.split("/")[1]}`] ?? "Dashboard";
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2">
