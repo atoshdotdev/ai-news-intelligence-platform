@@ -31,6 +31,18 @@ class Settings(BaseSettings):
     cors_allow_methods: list[str] = ["*"]
     cors_allow_headers: list[str] = ["*"]
     cors_expose_headers: list[str] = ["Content-Disposition"]
+    secret_key: str = Field(
+        default="your-secret-key-here",
+        description="The secret key for JWT token generation",
+    )
+    algorithm: str = Field(
+        default="HS256",
+        description="The algorithm for JWT token generation",
+    )
+    access_token_expire_minutes: int = Field(
+        default=1440,
+        description="The number of minutes the access token should expire in",
+    )
 
 
 settings = Settings()

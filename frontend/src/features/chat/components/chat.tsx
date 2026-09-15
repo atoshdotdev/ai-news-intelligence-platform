@@ -1,8 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { TextStreamChatTransport, DefaultChatTransport } from "ai";
-import { type ChatUIMessage } from "@/features/chat/tools/index";
+import { DefaultChatTransport } from "ai";
 import { ChatMessage } from "@/features/chat/components/chat-message";
 import { PromptForm } from "@/features/chat/components/prompt-form";
 import { Suggestions } from "@/features/chat/components/suggestions";
@@ -26,6 +25,17 @@ export function Chat() {
   const { messages, sendMessage, status, stop, error } = useChat({
     transport: new DefaultChatTransport({
       api: `${process.env.NEXT_PUBLIC_API_URL}/chat`,
+      headers: (): Record<string, string> => {
+        const token = localStorage.getItem("access_token");
+
+        if (!token) {
+          return {};
+        }
+
+        return {
+          Authorization: `Bearer ${token}`,
+        };
+      },
     }),
   });
 
