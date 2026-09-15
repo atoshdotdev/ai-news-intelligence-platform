@@ -1,6 +1,7 @@
 import { request } from "@/lib/request";
 
 import type {
+  AuthResponse,
   LoginRequest,
   RegisterRequest,
   TokenResponse,
@@ -21,7 +22,7 @@ export const authApi = {
       data,
     }),
 
-  register: (data: RegisterRequest): Promise<User> =>
+  register: (data: RegisterRequest): Promise<AuthResponse> =>
     request({
       url: "/auth/register",
       method: "POST",

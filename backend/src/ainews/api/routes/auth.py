@@ -6,6 +6,7 @@ from ainews.core.db.database import get_session
 from ainews.core.db.models import User
 from ainews.core.repositories.user_repository import UserRepository
 from ainews.core.schemas.auth_schemas import (
+    AuthResponse,
     LoginRequest,
     RegisterRequest,
     TokenResponse,
@@ -31,13 +32,13 @@ async def get_me(
 
 @router.post(
     "/register",
-    response_model=UserRead,
+    response_model=AuthResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def register(
     request: RegisterRequest,
     service: AuthService = Depends(get_auth_service),
-) -> UserRead:
+) -> AuthResponse:
     return await service.register(request)
 
 

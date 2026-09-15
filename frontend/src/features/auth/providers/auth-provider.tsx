@@ -29,7 +29,7 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (data: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<User>;
+  register: (data: RegisterRequest) => Promise<void>;
   logout: () => void;
 };
 
@@ -70,10 +70,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const register = useCallback(
-    async (data: RegisterRequest): Promise<User> => {
-      return registerMutation.mutateAsync(data);
+    async (data: RegisterRequest) => {
+      const response = await registerMutation.mutateAsync(data);
+
+      localStorage.setItem(ACCESS_TOKEN_KEY, response.token.access_token);
+
+      setHasToken(true);
+
+      const result = await currentUserQuery.refetch();
+
+      if (!result.data) {
+        throw new Error("Failed to retrieve current user");
+      }
     },
-    [registerMutation],
+    [registerMutation, currentUserQuery],
   );
 
   const logout = useCallback(() => {

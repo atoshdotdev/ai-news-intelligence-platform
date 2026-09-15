@@ -29,3 +29,8 @@ class TokenResponse(BaseModel):
 
 class TokenData(BaseModel):
     sub: str
+
+
+class AuthResponse(BaseModel):
+    user: UserRead
+    token: TokenResponse

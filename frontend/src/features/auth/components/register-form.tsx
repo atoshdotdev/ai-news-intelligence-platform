@@ -40,7 +40,7 @@ export function RegisterForm() {
         password,
       });
 
-      router.replace("/login");
+      router.replace("/");
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Failed to create account.",

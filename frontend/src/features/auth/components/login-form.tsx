@@ -31,7 +31,7 @@ export function LoginForm() {
         password,
       });
 
-      router.replace("/dashboard");
+      router.replace("/");
     } catch {
       setError("Invalid username or password.");
     } finally {
