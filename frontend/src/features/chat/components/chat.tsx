@@ -20,13 +20,14 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
+import { getAccessToken } from "@/features/auth/hooks/use-has-token";
 
 export function Chat() {
   const { messages, sendMessage, status, stop, error } = useChat({
     transport: new DefaultChatTransport({
       api: `${process.env.NEXT_PUBLIC_API_URL}/chat`,
       headers: (): Record<string, string> => {
-        const token = localStorage.getItem("access_token");
+        const token = getAccessToken();
 
         if (!token) {
           return {};

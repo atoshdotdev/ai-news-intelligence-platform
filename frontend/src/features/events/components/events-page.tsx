@@ -153,14 +153,6 @@ export function EventsPage() {
 
   return (
     <main className="container mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">News</h1>
-
-        <p className="mt-1 text-sm text-muted-foreground">
-          Explore the latest news events and coverage from multiple sources.
-        </p>
-      </div>
-
       {(hasEvents || hasFilters) && (
         <section className="mb-8 rounded-xl border bg-card p-4">
           <div className="mb-4 flex items-center gap-2">

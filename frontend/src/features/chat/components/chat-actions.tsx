@@ -9,10 +9,16 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { PlusIcon } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 export function ChatActions() {
   return (
     <SidebarGroup>
+      <Separator
+        orientation="horizontal"
+        className="h-4 mb-4 data-horizontal:self-auto"
+      />
+
       <SidebarGroupContent>
         <SidebarMenu>
           <SidebarMenuItem>

@@ -1,14 +1,14 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import {
+  removeAccessToken,
+  setAccessToken,
+  useHasToken,
+  useIsHydrated,
+} from "@/features/auth/hooks/use-has-token";
 import {
   useCurrentUser,
   useLogin,
@@ -21,7 +21,6 @@ import type {
   User,
 } from "@/features/auth/types";
 
-const ACCESS_TOKEN_KEY = "access_token";
 const CURRENT_USER_QUERY_KEY = ["auth", "me"];
 
 type AuthContextValue = {
@@ -38,17 +37,12 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
-  const [hasToken, setHasToken] = useState<boolean | null>(() => {
-    if (typeof window === "undefined") {
-      return null;
-    }
-
-    return localStorage.getItem(ACCESS_TOKEN_KEY) !== null;
-  });
+  const hasToken = useHasToken();
+  const isHydrated = useIsHydrated();
 
   const loginMutation = useLogin();
   const registerMutation = useRegister();
-  const currentUserQuery = useCurrentUser(hasToken === true);
+  const currentUserQuery = useCurrentUser(hasToken);
 
   const user = currentUserQuery.data ?? null;
 
@@ -56,9 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (data: LoginRequest) => {
       const response: TokenResponse = await loginMutation.mutateAsync(data);
 
-      localStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
-
-      setHasToken(true);
+      setAccessToken(response.access_token);
 
       const result = await currentUserQuery.refetch();
 
@@ -73,9 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (data: RegisterRequest) => {
       const response = await registerMutation.mutateAsync(data);
 
-      localStorage.setItem(ACCESS_TOKEN_KEY, response.token.access_token);
-
-      setHasToken(true);
+      setAccessToken(response.token.access_token);
 
       const result = await currentUserQuery.refetch();
 
@@ -87,17 +77,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-
-    setHasToken(false);
+    removeAccessToken();
 
     queryClient.removeQueries({
       queryKey: CURRENT_USER_QUERY_KEY,
     });
   }, [queryClient]);
 
-  const isLoading =
-    hasToken === null || (hasToken === true && currentUserQuery.isLoading);
+  const isLoading = !isHydrated || (hasToken && currentUserQuery.isLoading);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -123,5 +110,3 @@ export function useAuthContext() {
 
   return context;
 }
-
-export { ACCESS_TOKEN_KEY };

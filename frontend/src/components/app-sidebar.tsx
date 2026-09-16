@@ -6,6 +6,7 @@ import Link from "next/link";
 import { NavMain } from "@/components/nav-main";
 import { RecentChats } from "@/features/chat/components/recent-chats";
 import { ChatActions } from "@/features/chat/components/chat-actions";
+import { UserMenu } from "@/components/user-menu";
 
 import {
   Sidebar,
@@ -57,17 +58,14 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="gap-0">
         <NavMain items={navMain} />
-
-        <Separator
-          orientation="horizontal"
-          className="h-4 data-horizontal:self-auto"
-        />
 
         <ChatActions />
 
         <RecentChats />
+
+        <UserMenu />
       </SidebarContent>
     </Sidebar>
   );
