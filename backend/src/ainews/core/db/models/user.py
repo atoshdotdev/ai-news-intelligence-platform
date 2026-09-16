@@ -1,10 +1,14 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, String, Text, Uuid, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ainews.core.db.base import Base
+
+if TYPE_CHECKING:
+    from ainews.core.db.models import Chat
 
 
 class User(Base):
@@ -39,4 +43,9 @@ class User(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    chats: Mapped[list["Chat"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
     )

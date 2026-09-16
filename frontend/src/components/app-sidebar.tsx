@@ -4,7 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 
 import { NavMain } from "@/components/nav-main";
-import { RecentChats } from "@/features/chat/components/recent-chats";
+import { PreviousChats } from "@/features/chat/components/previous-chats";
+import { PinnedChats } from "@/features/chat/components/pinned-chats";
 import { ChatActions } from "@/features/chat/components/chat-actions";
 import { UserMenu } from "@/components/user-menu";
 
@@ -23,8 +24,6 @@ import {
   NewspaperIcon,
   BotMessageSquare,
 } from "lucide-react";
-
-import { Separator } from "@/components/ui/separator";
 
 const navMain = [
   {
@@ -63,7 +62,9 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
         <ChatActions />
 
-        <RecentChats />
+        <PinnedChats />
+
+        <PreviousChats />
 
         <UserMenu />
       </SidebarContent>

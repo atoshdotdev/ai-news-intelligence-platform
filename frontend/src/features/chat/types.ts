@@ -5,6 +5,7 @@ export type ChatMessage = {
   role: ChatRole;
   content: string;
   sources?: ChatSource[];
+  created_at: string;
 };
 
 export type ChatResponse = {
@@ -18,4 +19,16 @@ export type ChatResponse = {
 export type ChatSource = {
   title: string;
   url: string;
+};
+
+export type Chat = {
+  id: string;
+  title: string;
+  pinned: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ChatDetail = Chat & {
+  messages: ChatMessage[];
 };

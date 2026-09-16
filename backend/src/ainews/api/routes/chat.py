@@ -1,9 +1,10 @@
 import json
-from uuid import uuid4
+from datetime import datetime, timezone
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from huggingface_hub import User
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ainews.api.dependencies.ai import (
     get_embedding_service,
@@ -13,28 +14,57 @@ from ainews.api.dependencies.ai import (
 from ainews.api.dependencies.auth import get_current_user
 from ainews.core.config.config import Config
 from ainews.core.db.database import get_session
+from ainews.core.db.models import User
+from ainews.core.db.models.chat_message import ChatMessageRole
+from ainews.core.repositories.chat_message_repository import ChatMessageRepository
+from ainews.core.repositories.chat_repository import ChatRepository
 from ainews.core.repositories.chunk_repository import ChunkRepository
-from ainews.core.schemas.chat_schemas import ChatRequest
+from ainews.core.schemas.chat_schemas import (
+    ChatDetailRead,
+    ChatRead,
+    ChatRequest,
+)
 from ainews.core.services.chat_service import ChatService
 from ainews.core.services.embedding_service import EmbeddingService
 from ainews.core.services.rag_service import RAGService
 from ainews.core.services.reranker_service import RerankerService
 from ainews.core.utils.chat import to_llm_messages
 
-router = APIRouter()
+router = APIRouter(
+    dependencies=[Depends(get_current_user)],
+)
 
 
-def get_services(
+def get_chat_service(
     request: Request,
-    session=Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     llm_client=Depends(get_llm_client),
+) -> ChatService:
+    config: Config = request.app.state.config
+
+    chat_repo = ChatRepository(session)
+    chat_message_repo = ChatMessageRepository(session)
+
+    return ChatService(
+        llm_client=llm_client,
+        system_prompt=config.chat.system_prompt,
+        user_prompt=config.chat.user_prompt,
+        chat_repository=chat_repo,
+        chat_message_repository=chat_message_repo,
+    )
+
+
+def get_rag_service(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
     embedding_service: EmbeddingService = Depends(get_embedding_service),
     reranker_service: RerankerService = Depends(get_reranker_service),
-):
+) -> RAGService:
     config: Config = request.app.state.config
+
     chunk_repo = ChunkRepository(session)
 
-    rag = RAGService(
+    return RAGService(
         chunk_repo=chunk_repo,
         embedding_service=embedding_service,
         reranker_service=reranker_service,
@@ -43,32 +73,44 @@ def get_services(
         max_context_chars=config.rag.max_context_chars,
     )
 
-    chat = ChatService(
-        llm_client,
-        system_prompt=config.chat.system_prompt,
-        user_prompt=config.chat.user_prompt,
-    )
-
-    return rag, chat
-
 
 @router.post("/")
 async def chat_stream(
     payload: ChatRequest,
-    deps: tuple[RAGService, ChatService] = Depends(get_services),
     current_user: User = Depends(get_current_user),
+    rag_service: RAGService = Depends(get_rag_service),
+    chat_service: ChatService = Depends(get_chat_service),
 ):
     message = payload.last_user_message
 
     if message is None:
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="No user message found",
         )
 
-    query = message.text
+    if payload.chat_id is None:
+        chat = await chat_service.create_chat(
+            user_id=current_user.id,
+            title="New chat",
+        )
 
-    rag_service, chat_service = deps
+        is_new_chat = True
+    else:
+        chat = await chat_service.get_chat_entity(
+            chat_id=payload.chat_id,
+            user_id=current_user.id,
+        )
+
+        is_new_chat = False
+
+    await chat_service.save_message(
+        chat_id=chat.id,
+        role=ChatMessageRole.USER,
+        content=message.text,
+    )
+
+    query = message.text
 
     chunks = await rag_service.retrieve(query)
     context = rag_service.build_context(chunks)
@@ -79,6 +121,7 @@ async def chat_stream(
     async def event_stream():
         message_id = str(uuid4())
         text_id = str(uuid4())
+        assistant_text = ""
 
         yield f"data: {
             json.dumps(
@@ -88,6 +131,16 @@ async def chat_stream(
                 }
             )
         }\n\n"
+
+        if is_new_chat:
+            yield f"data: {
+                json.dumps(
+                    {
+                        'type': 'data-chatId',
+                        'data': str(chat.id),
+                    }
+                )
+            }\n\n"
 
         yield f"data: {
             json.dumps(
@@ -102,6 +155,8 @@ async def chat_stream(
             messages=messages,
             context=context,
         ):
+            assistant_text += token
+
             yield f"data: {
                 json.dumps(
                     {
@@ -133,6 +188,15 @@ async def chat_stream(
                 )
             }\n\n"
 
+        await chat_service.save_message(
+            chat_id=chat.id,
+            role=ChatMessageRole.ASSISTANT,
+            content=assistant_text,
+        )
+
+        chat.updated_at = datetime.now(timezone.utc)
+        await chat_service.update_chat(chat)
+
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(
@@ -143,4 +207,51 @@ async def chat_stream(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
         },
+    )
+
+
+@router.get("/", response_model=list[ChatRead])
+async def read_chats(
+    current_user: User = Depends(get_current_user),
+    service: ChatService = Depends(get_chat_service),
+):
+    return await service.get_user_chats(current_user.id)
+
+
+@router.get("/{chat_id}", response_model=ChatDetailRead)
+async def read_chat(
+    chat_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: ChatService = Depends(get_chat_service),
+):
+    return await service.get_chat(
+        chat_id,
+        current_user.id,
+    )
+
+
+@router.patch("/{chat_id}/pin", response_model=ChatRead)
+async def toggle_chat_pin(
+    chat_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: ChatService = Depends(get_chat_service),
+):
+    return await service.toggle_pin(
+        chat_id,
+        current_user.id,
+    )
+
+
+@router.delete(
+    "/{chat_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_chat(
+    chat_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: ChatService = Depends(get_chat_service),
+):
+    await service.delete_chat(
+        chat_id,
+        current_user.id,
     )

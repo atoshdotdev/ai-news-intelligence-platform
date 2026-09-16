@@ -1,6 +1,8 @@
+from datetime import datetime
 from typing import Literal
+from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ChatMessagePart(BaseModel):
@@ -27,7 +29,7 @@ class LLMMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    id: str
+    chat_id: UUID | None = None
     messages: list[ChatMessage]
     trigger: str | None = None
 
@@ -44,3 +46,26 @@ class ChatSource(BaseModel):
     source_id: str
     url: str
     title: str
+
+
+class ChatRead(BaseModel):
+    id: UUID
+    title: str
+    pinned: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ChatMessageRead(BaseModel):
+    id: UUID
+    role: str
+    content: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ChatDetailRead(ChatRead):
+    messages: list[ChatMessageRead]
