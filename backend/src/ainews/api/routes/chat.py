@@ -48,9 +48,11 @@ def get_chat_service(
     return ChatService(
         llm_client=llm_client,
         system_prompt=config.chat.system_prompt,
+        direct_system_prompt=config.chat.direct_system_prompt,
         user_prompt=config.chat.user_prompt,
         chat_repository=chat_repo,
         chat_message_repository=chat_message_repo,
+        history_max_chars=config.chat.history_max_chars,
     )
 
 
@@ -59,6 +61,7 @@ def get_rag_service(
     session: AsyncSession = Depends(get_session),
     embedding_service: EmbeddingService = Depends(get_embedding_service),
     reranker_service: RerankerService = Depends(get_reranker_service),
+    llm_client=Depends(get_llm_client),
 ) -> RAGService:
     config: Config = request.app.state.config
 
@@ -68,9 +71,16 @@ def get_rag_service(
         chunk_repo=chunk_repo,
         embedding_service=embedding_service,
         reranker_service=reranker_service,
+        llm_client=llm_client,
         retrieval_limit=config.rag.retrieval_limit,
         result_limit=config.rag.result_limit,
-        max_context_chars=config.rag.max_context_chars,
+        decision_model=config.rag.decision_model,
+        decision_temperature=config.rag.decision_temperature,
+        decision_context_size=config.rag.decision_context_size,
+        decision_max_tokens=config.rag.decision_max_tokens,
+        decision_system_prompt=config.rag.decision_system_prompt,
+        max_chunks_per_article=config.rag.max_chunks_per_article,
+        neighbor_chunks=config.rag.neighbor_chunks,
     )
 
 
@@ -110,13 +120,25 @@ async def chat_stream(
         content=message.text,
     )
 
-    query = message.text
-
-    chunks = await rag_service.retrieve(query)
-    context = rag_service.build_context(chunks)
-    sources = rag_service.build_sources(chunks)
-
     messages = to_llm_messages(payload.messages)
+
+    decision_messages = messages[-4:]
+
+    requires_rag = await rag_service.requires_rag(
+        messages=decision_messages,
+    )
+
+    if requires_rag:
+        retrieval_query = chat_service.build_retrieval_query(
+            messages=messages,
+        )
+
+        chunks = await rag_service.retrieve(retrieval_query)
+        context = rag_service.build_context(chunks)
+        sources = rag_service.build_sources(chunks)
+    else:
+        context = ""
+        sources = []
 
     async def event_stream():
         message_id = str(uuid4())
@@ -154,6 +176,7 @@ async def chat_stream(
         async for token in chat_service.stream_chat(
             messages=messages,
             context=context,
+            use_rag=requires_rag,
         ):
             assistant_text += token
 
@@ -194,8 +217,21 @@ async def chat_stream(
             content=assistant_text,
         )
 
+        if is_new_chat:
+            chat.title = await chat_service.generate_title(message.text)
+
         chat.updated_at = datetime.now(timezone.utc)
         await chat_service.update_chat(chat)
+
+        if is_new_chat:
+            yield f"data: {
+                json.dumps(
+                    {
+                        'type': 'data-chatTitle',
+                        'data': chat.title,
+                    }
+                )
+            }\n\n"
 
         yield "data: [DONE]\n\n"
 

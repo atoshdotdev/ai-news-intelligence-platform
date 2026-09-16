@@ -34,6 +34,7 @@ async def lifespan(app: FastAPI):
     app.state.reranker_service = RerankerService(
         model_name=config.reranker.model,
         device=config.reranker.device,
+        threshold=config.reranker.reranker_threshold,
     )
 
     yield

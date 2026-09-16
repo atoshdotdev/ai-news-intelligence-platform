@@ -1,6 +1,9 @@
+from uuid import UUID
+
+from ainews.core.clients.llm_client import LLMClient
 from ainews.core.db.models.article_chunk import ArticleChunk
 from ainews.core.repositories.chunk_repository import ChunkRepository
-from ainews.core.schemas.chat_schemas import ChatSource
+from ainews.core.schemas.chat_schemas import ChatSource, LLMMessage
 from ainews.core.services.embedding_service import EmbeddingService
 from ainews.core.services.reranker_service import RerankerService
 
@@ -11,18 +14,32 @@ class RAGService:
         chunk_repo: ChunkRepository,
         embedding_service: EmbeddingService,
         reranker_service: RerankerService,
+        llm_client: LLMClient,
         retrieval_limit: int,
         result_limit: int,
-        max_context_chars: int,
+        decision_model: str,
+        decision_temperature: float,
+        decision_context_size: int,
+        decision_max_tokens: int,
+        decision_system_prompt: str,
+        max_chunks_per_article: int,
+        neighbor_chunks: int,
     ):
         self.chunk_repo = chunk_repo
         self.embedding_service = embedding_service
         self.reranker_service = reranker_service
+        self.llm_client = llm_client
         self.retrieval_limit = retrieval_limit
         self.result_limit = result_limit
-        self.max_context_chars = max_context_chars
+        self.decision_model = decision_model
+        self.decision_temperature = decision_temperature
+        self.decision_context_size = decision_context_size
+        self.decision_max_tokens = decision_max_tokens
+        self.decision_system_prompt = decision_system_prompt
+        self.max_chunks_per_article = max_chunks_per_article
+        self.neighbor_chunks = neighbor_chunks
 
-    async def retrieve(self, query: str):
+    async def retrieve(self, query: str) -> list[ArticleChunk]:
         query_embedding = self.embedding_service.encode_query(query)
 
         chunks = await self.chunk_repo.search_similar(
@@ -33,33 +50,51 @@ class RAGService:
         if not chunks:
             return []
 
-        chunks = self.reranker_service.rank(
+        ranked_chunks = self.reranker_service.rank(
             query=query,
             chunks=chunks,
         )
 
-        return chunks[: self.result_limit]
+        selected: list[ArticleChunk] = []
+        article_counts: dict[UUID, int] = {}
+
+        for chunk in ranked_chunks:
+            article_id = chunk.article.id
+
+            count = article_counts.get(article_id, 0)
+
+            if count >= self.max_chunks_per_article:
+                continue
+
+            selected.append(chunk)
+            article_counts[article_id] = count + 1
+
+            if len(selected) >= self.result_limit:
+                break
+
+        if not selected:
+            return []
+
+        if self.neighbor_chunks > 0:
+            selected = await self.chunk_repo.get_neighbors(
+                chunks=selected,
+                neighbor_chunks=self.neighbor_chunks,
+            )
+
+        return selected
 
     def build_context(self, chunks: list[ArticleChunk]) -> str:
         sections = []
-        current_chars = 0
 
         for index, chunk in enumerate(chunks, start=1):
             article = chunk.article
 
-            section = (
-                f"[Source {index}]\n"
+            sections.append(
                 f"Title: {article.title}\n"
                 f"Published: {article.published_at}\n"
                 f"URL: {article.url}\n\n"
                 f"{chunk.content}"
             )
-
-            if current_chars + len(section) > self.max_context_chars:
-                break
-
-            sections.append(section)
-            current_chars += len(section)
 
         return "\n\n".join(sections)
 
@@ -85,3 +120,16 @@ class RAGService:
             )
 
         return sources
+
+    async def requires_rag(
+        self,
+        messages: list[LLMMessage],
+    ) -> bool:
+        return await self.llm_client.classify_rag(
+            messages=messages,
+            system_prompt=self.decision_system_prompt,
+            model=self.decision_model,
+            temperature=self.decision_temperature,
+            max_tokens=self.decision_max_tokens,
+            context_size=self.decision_context_size,
+        )

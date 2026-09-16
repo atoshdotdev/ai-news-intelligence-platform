@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from uuid import UUID
 
 from ainews.core.db.models import ArticleChunk
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -114,6 +114,48 @@ class ChunkRepository:
             .where(ArticleChunk.embedding.is_not(None))
             .order_by(ArticleChunk.embedding.cosine_distance(query_embedding))
             .limit(limit)
+        )
+
+        return list(result.scalars().all())
+
+    async def get_chunks_for_article(
+        self,
+        article_id: UUID,
+    ) -> list[ArticleChunk]:
+        result = await self.session.execute(
+            select(ArticleChunk)
+            .where(ArticleChunk.article_id == article_id)
+            .order_by(ArticleChunk.chunk_index)
+        )
+
+        return list(result.scalars().all())
+
+    async def get_neighbors(
+        self,
+        chunks: list[ArticleChunk],
+        neighbor_chunks: int,
+    ) -> list[ArticleChunk]:
+        if not chunks or neighbor_chunks <= 0:
+            return chunks
+
+        ranges = []
+
+        for chunk in chunks:
+            ranges.append(
+                and_(
+                    ArticleChunk.article_id == chunk.article_id,
+                    ArticleChunk.chunk_index >= chunk.chunk_index - neighbor_chunks,
+                    ArticleChunk.chunk_index <= chunk.chunk_index + neighbor_chunks,
+                )
+            )
+
+        result = await self.session.execute(
+            select(ArticleChunk)
+            .where(or_(*ranges))
+            .order_by(
+                ArticleChunk.article_id,
+                ArticleChunk.chunk_index,
+            )
         )
 
         return list(result.scalars().all())

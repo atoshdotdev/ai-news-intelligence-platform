@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useChat } from "@ai-sdk/react";
+import { Chat, useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 
 import { ChatMessage } from "@/features/chat/components/chat-message";
@@ -26,6 +26,7 @@ import { getAccessToken } from "@/features/auth/hooks/use-has-token";
 import type { UIMessage } from "ai";
 import { useQueryClient } from "@tanstack/react-query";
 import { CHATS_QUERY_KEY } from "@/features/chat/hooks/use-chat";
+import type { Chat as ChatType } from "@/features/chat/types";
 
 type ChatContentProps = {
   initialChatId?: string;
@@ -82,6 +83,26 @@ export function ChatContent({
             queryKey: CHATS_QUERY_KEY,
           });
         }
+      }
+
+      if (
+        dataPart.type === "data-chatTitle" &&
+        typeof dataPart.data === "string"
+      ) {
+        const newTitle = dataPart.data;
+
+        queryClient.setQueryData<ChatType[]>(CHATS_QUERY_KEY, (chats) => {
+          if (!chats) return chats;
+
+          return chats.map((chat) =>
+            chat.id === chatId
+              ? {
+                  ...chat,
+                  title: newTitle,
+                }
+              : chat,
+          );
+        });
       }
     },
   });

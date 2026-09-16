@@ -19,7 +19,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 
 export function UserMenu() {
@@ -42,12 +41,7 @@ export function UserMenu() {
   useAuth();
 
   return (
-    <SidebarGroup className="mt-auto sticky bottom-0">
-      <Separator
-        orientation="horizontal"
-        className="h-4 mb-2 data-horizontal:self-auto"
-      />
-
+    <SidebarGroup className="mt-auto sticky bottom-0 bg-sidebar border-t border-t-border rounded-b-lg">
       <SidebarGroupContent>
         <SidebarMenu>
           <SidebarMenuItem>

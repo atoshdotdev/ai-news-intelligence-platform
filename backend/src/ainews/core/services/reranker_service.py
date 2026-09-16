@@ -15,11 +15,13 @@ class RerankerService:
         self,
         model_name: str,
         device: str,
+        threshold: float,
     ):
         self.model = CrossEncoder(
             model_name,
             device=device,
         )
+        self.threshold = threshold
 
     def rank(
         self,
@@ -42,4 +44,4 @@ class RerankerService:
             reverse=True,
         )
 
-        return [chunk for chunk, _ in ranked]
+        return [chunk for chunk, score in ranked if float(score) >= self.threshold]

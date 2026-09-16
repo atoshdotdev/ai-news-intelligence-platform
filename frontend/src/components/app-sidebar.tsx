@@ -24,6 +24,7 @@ import {
   NewspaperIcon,
   BotMessageSquare,
 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 const navMain = [
   {
@@ -55,13 +56,18 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+
+        <NavMain items={navMain} />
+
+        <Separator
+          orientation="horizontal"
+          className="h-4 data-horizontal:self-auto"
+        />
+
+        <ChatActions />
       </SidebarHeader>
 
       <SidebarContent className="gap-0">
-        <NavMain items={navMain} />
-
-        <ChatActions />
-
         <PinnedChats />
 
         <PreviousChats />
