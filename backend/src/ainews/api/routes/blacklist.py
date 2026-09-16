@@ -2,6 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response, status
 
+from ainews.api.dependencies.auth import get_current_user
 from ainews.core.db.database import get_session
 from ainews.core.schemas.source_schemas import (
     SourceBlacklistCreate,
@@ -9,7 +10,7 @@ from ainews.core.schemas.source_schemas import (
 )
 from ainews.core.services.blacklist_service import BlacklistService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 def get_blacklist_service(session=Depends(get_session)) -> BlacklistService:

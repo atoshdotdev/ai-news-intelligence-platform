@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
+from ainews.api.dependencies.auth import get_current_user
 from ainews.core.schemas.category_schemas import (
     CategoriesResponse,
     CategoryRead,
 )
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get(

@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ainews.api.dependencies.auth import get_current_user
 from ainews.core.db.database import get_session
 from ainews.core.schemas.pagination_schemas import PaginationParams
 from ainews.core.schemas.source_schemas import (
@@ -13,7 +14,7 @@ from ainews.core.schemas.source_schemas import (
 )
 from ainews.core.services.source_service import SourceService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 def get_source_service(session: AsyncSession = Depends(get_session)) -> SourceService:
@@ -64,4 +65,3 @@ async def delete_source(
     success = await service.delete_source(source_id)
     if not success:
         raise HTTPException(status_code=404, detail="Source not found")
-    return None

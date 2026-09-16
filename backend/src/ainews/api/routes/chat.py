@@ -3,12 +3,14 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from huggingface_hub import User
 
 from ainews.api.dependencies.ai import (
     get_embedding_service,
     get_llm_client,
     get_reranker_service,
 )
+from ainews.api.dependencies.auth import get_current_user
 from ainews.core.config.config import Config
 from ainews.core.db.database import get_session
 from ainews.core.repositories.chunk_repository import ChunkRepository
@@ -54,6 +56,7 @@ def get_services(
 async def chat_stream(
     payload: ChatRequest,
     deps: tuple[RAGService, ChatService] = Depends(get_services),
+    current_user: User = Depends(get_current_user),
 ):
     message = payload.last_user_message
 
