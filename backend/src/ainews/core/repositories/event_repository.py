@@ -28,8 +28,10 @@ class EventRepository:
     async def get_all(
         self,
         filters: EventFilters,
+        query_embedding: list[float] | None,
         offset: int,
         limit: int,
+        cosine_similarity_threshold: float = 0.3,
     ) -> tuple[list[EventListItem], int]:
         conditions: list[ColumnElement[bool]] = [
             Event.summary.is_not(None),
@@ -39,7 +41,22 @@ class EventRepository:
         if filters.category:
             conditions.append(Event.category == filters.category)
 
-        if filters.search:
+        if filters.from_date:
+            conditions.append(Event.last_published_at >= filters.from_date)
+
+        if filters.to_date:
+            conditions.append(Event.last_published_at <= filters.to_date)
+
+        distance = None
+
+        if query_embedding is not None:
+            distance = Event.embedding.cosine_distance(query_embedding)
+
+            cosine_distance_threshold = 1 - cosine_similarity_threshold
+
+            conditions.append(distance <= cosine_distance_threshold)
+
+        elif filters.search:
             search = f"%{filters.search}%"
 
             conditions.append(
@@ -48,12 +65,6 @@ class EventRepository:
                     Event.summary.ilike(search),
                 )
             )
-
-        if filters.from_date:
-            conditions.append(Event.last_published_at >= filters.from_date)
-
-        if filters.to_date:
-            conditions.append(Event.last_published_at <= filters.to_date)
 
         count_query = select(func.count(Event.id)).where(*conditions)
 
@@ -76,13 +87,17 @@ class EventRepository:
             )
             .where(*conditions)
             .group_by(Event.id)
-            .order_by(
+        )
+
+        if distance is not None:
+            query = query.order_by(distance)
+        else:
+            query = query.order_by(
                 Event.last_published_at.desc().nullslast(),
                 Event.created_at.desc(),
             )
-            .offset(offset)
-            .limit(limit)
-        )
+
+        query = query.offset(offset).limit(limit)
 
         result = await self.session.execute(query)
 

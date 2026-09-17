@@ -10,11 +10,15 @@ from ainews.core.schemas.pagination_schemas import (
     PaginationMetadata,
     PaginationParams,
 )
+from ainews.core.services.embedding_service import EmbeddingService
 
 
 class EventService:
-    def __init__(self, repository: EventRepository):
+    def __init__(
+        self, repository: EventRepository, embedding_service: EmbeddingService
+    ):
         self.repository = repository
+        self.embedding_service = embedding_service
 
     async def get_all_events(
         self,
@@ -23,8 +27,14 @@ class EventService:
     ) -> PaginatedEventsResponse:
         offset, limit = pagination_params.to_sqlalchemy_pagination()
 
+        query_embedding: list[float] | None = None
+
+        if filters.search:
+            query_embedding = self.embedding_service.encode_query(filters.search)
+
         rows, total_items = await self.repository.get_all(
             filters=filters,
+            query_embedding=query_embedding,
             offset=offset,
             limit=limit,
         )

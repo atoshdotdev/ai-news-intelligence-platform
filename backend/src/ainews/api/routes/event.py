@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ainews.api.dependencies.ai import get_embedding_service
 from ainews.api.dependencies.auth import get_current_user
 from ainews.core.db.database import get_session
 from ainews.core.repositories.event_repository import EventRepository
@@ -19,9 +20,10 @@ router = APIRouter(dependencies=[Depends(get_current_user)])
 
 def get_event_service(
     session: AsyncSession = Depends(get_session),
+    embedding_service=Depends(get_embedding_service),
 ) -> EventService:
     repository = EventRepository(session)
-    return EventService(repository)
+    return EventService(repository, embedding_service)
 
 
 @router.get("/", response_model=PaginatedEventsResponse)
