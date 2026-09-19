@@ -125,11 +125,35 @@ class RAGService:
         self,
         messages: list[LLMMessage],
     ) -> bool:
+        if not messages:
+            return True
+
+        decision_input = self._build_decision_input(messages)
+
         return await self.llm_client.classify_rag(
-            messages=messages,
+            user_message=decision_input,
             system_prompt=self.decision_system_prompt,
             model=self.decision_model,
             temperature=self.decision_temperature,
             max_tokens=self.decision_max_tokens,
             context_size=self.decision_context_size,
         )
+
+    def _build_decision_input(
+        self,
+        messages: list[LLMMessage],
+    ) -> str:
+        history = messages[:-1]
+        current_message = messages[-1]
+
+        history_text = "\n".join(
+            f"{message.role.upper()}: {message.content}" for message in history
+        )
+
+        return f"""\
+            CONVERSATION HISTORY:
+            {history_text or "(none)"}
+
+            CURRENT USER MESSAGE:
+            {current_message.content}
+        """

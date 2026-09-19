@@ -61,24 +61,13 @@ class LLMClient:
 
     async def classify_rag(
         self,
-        messages: list[LLMMessage],
+        user_message: str,
         system_prompt: str,
         model: str,
         temperature: float,
         max_tokens: int,
         context_size: int,
     ) -> bool:
-        openai_messages = cast(
-            list[ChatCompletionMessageParam],
-            [
-                {
-                    "role": message.role,
-                    "content": message.content,
-                }
-                for message in messages
-            ],
-        )
-
         response = await self.client.chat.completions.create(
             model=model,
             messages=[
@@ -86,7 +75,10 @@ class LLMClient:
                     "role": "system",
                     "content": system_prompt,
                 },
-                *openai_messages,
+                {
+                    "role": "user",
+                    "content": user_message,
+                },
             ],
             temperature=temperature,
             max_completion_tokens=max_tokens,
@@ -103,7 +95,7 @@ class LLMClient:
             extra_body={
                 "options": {
                     "num_ctx": context_size,
-                }
+                },
             },
         )
 

@@ -32,6 +32,7 @@ For time-sensitive questions:
   say that the available information may not be current.
 - Do not assume an article's publication date is the date when the event
   itself occurred.
+- Do not mention about the current date or time in your answer unless it is relevant to the question.
 
 CONVERSATION
 
@@ -111,85 +112,36 @@ needed. Avoid unnecessary formatting.
 
 
 RAG_DECISION_SYSTEM_PROMPT = """\
-Decide whether the CURRENT USER MESSAGE requires information from the news
-database to answer accurately.
+You are a binary classifier that decides whether the CURRENT USER MESSAGE
+requires retrieval from the news database.
 
-Use the conversation history to understand the user's intent, resolve
-references, and determine whether the required information is already known.
+RULES:
 
-Return:
+1. Use only the provided conversation history. Never use general knowledge
+   or external information.
+
+2. If there is no conversation history, return true.
+
+3. Return true when the current message requires information that is not
+   contained in the conversation.
+
+4. A follow-up continues the intent of the previous user request unless the
+   user clearly changes the intent.
+
+5. Use the conversation history to resolve follow-ups and references such as
+   "what about X", "how about X", "and X", "what happened next", "he", "she",
+   "it", and "they".
+
+6. Return false for greetings, thanks, goodbyes, and casual conversation.
+
+7. If uncertain, return true.
+
+8. Do not answer the user's question.
+
+Return ONLY:
 {"requires_rag": true}
-when new information from the news database is needed.
-
-Return:
+or:
 {"requires_rag": false}
-when the message can be answered accurately without retrieving new information
-from the news database.
-
-REQUIRES RAG = TRUE
-
-Set requires_rag to true when the user asks for:
-
-- Current, recent, latest, or breaking news.
-- What is happening now or what happened recently.
-- Information about a recent or ongoing event, incident, development, or story.
-- Current or recent information about a person, organization, country, place,
-  or topic that may have changed over time.
-- Facts, dates, causes, developments, or outcomes that require recent news
-  information.
-- New information about a previously discussed news topic that is not already
-  established in the conversation.
-- A follow-up question whose answer requires retrieving additional information.
-
-Examples:
-- "What happened in Ukraine today?" → true
-- "What are the latest developments in the war?" → true
-- "Who is the current CEO of NVIDIA?" → true
-- "When did that happen?" → true, if the answer is not already in the
-  conversation
-
-REQUIRES RAG = FALSE
-
-Set requires_rag to false when:
-
-- The user is greeting, thanking, saying goodbye, or making casual conversation.
-- The user asks about the assistant or its capabilities.
-- The user asks a general question that does not require recent news.
-- The user is talking about what they intend to ask or do later.
-- The user mentions news or current events without actually asking for
-  information about them.
-- The answer is already reliably established in the conversation history.
-- The message is a follow-up that can be answered completely from the
-  conversation history.
-
-Examples:
-- "Hi, how are you?" → false
-- "Thanks!" → false
-- "Can you answer questions about current events?" → false
-- "I will ask you about the latest news later." → false
-- "What was the date you mentioned earlier?" → false, if that date is already
-  in the conversation
-
-IMPORTANT
-
-Classify what information is needed to answer the CURRENT USER MESSAGE, not
-merely what topics the message mentions.
-
-Mentioning "news", "latest news", or a news topic does not automatically mean
-retrieval is required.
-
-For follow-up questions, use the conversation history first. Set
-requires_rag to false only when the conversation contains enough information
-to answer accurately. Otherwise, set it to true.
-
-When the user explicitly asks for current, recent, latest, or breaking
-information, set requires_rag to true even if the conversation contains older
-information.
-
-When uncertain whether new news information is required, set requires_rag
-to true.
-
-Return only the JSON object. Do not answer the user's question.
 """
 
 CHAT_TITLE_SYSTEM_PROMPT = """\
@@ -250,7 +202,7 @@ class RAGConfig:
     decision_model: str = "llama3.2:3b"
     decision_temperature: float = 0.0
     decision_context_size: int = 4096
-    decision_max_tokens: int = 10
+    decision_max_tokens: int = 32
     decision_system_prompt: str = RAG_DECISION_SYSTEM_PROMPT
 
 
