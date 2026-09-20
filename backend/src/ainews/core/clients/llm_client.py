@@ -1,12 +1,15 @@
 from collections.abc import AsyncGenerator
-from typing import cast
 
 from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletionMessageParam
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionMessageParam,
+)
 
 from ainews.core.config.config import Config
-from ainews.core.schemas.chat_schemas import LLMMessage
-from ainews.core.schemas.rag_schemas import RAGDecision
+from ainews.core.tools.news_search import (
+    NEWS_SEARCH_TOOL,
+)
 
 
 class LLMClient:
@@ -21,92 +24,51 @@ class LLMClient:
         )
         self.config = config
 
-    async def chat_stream(
-        self, messages: list[LLMMessage]
-    ) -> AsyncGenerator[str, None]:
-        openai_messages = cast(
-            list[ChatCompletionMessageParam],
-            [
-                {
-                    "role": message.role,
-                    "content": message.content,
-                }
-                for message in messages
-            ],
+    async def create_agent_response(
+        self,
+        messages: list[ChatCompletionMessageParam],
+    ) -> ChatCompletion:
+        return await self.client.chat.completions.create(
+            model=self.config.chat.model,
+            messages=messages,
+            temperature=self.config.chat.temperature,
+            max_completion_tokens=self.config.chat.max_tokens,
+            stream=False,
+            tools=[NEWS_SEARCH_TOOL],
+            reasoning_effort="none",
+            extra_body={
+                "options": {
+                    "num_ctx": self.config.chat.context_size,
+                },
+            },
         )
 
+    async def chat_stream(
+        self,
+        messages: list[ChatCompletionMessageParam],
+    ) -> AsyncGenerator[str, None]:
         stream = await self.client.chat.completions.create(
             model=self.config.chat.model,
-            messages=openai_messages,
+            messages=messages,
             temperature=self.config.chat.temperature,
             max_completion_tokens=self.config.chat.max_tokens,
             stream=True,
             reasoning_effort="none",
-            extra_body={"options": {"num_ctx": self.config.chat.context_size}},
+            extra_body={
+                "options": {
+                    "num_ctx": self.config.chat.context_size,
+                },
+            },
         )
 
         async for chunk in stream:
             if not chunk.choices:
                 continue
 
-            choice = chunk.choices[0]
-
-            if choice.finish_reason == "stop":
-                continue
-
-            content = choice.delta.content
+            content = chunk.choices[0].delta.content
 
             if content:
                 yield content
-
-    async def classify_rag(
-        self,
-        user_message: str,
-        system_prompt: str,
-        model: str,
-        temperature: float,
-        max_tokens: int,
-        context_size: int,
-    ) -> bool:
-        response = await self.client.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": system_prompt,
-                },
-                {
-                    "role": "user",
-                    "content": user_message,
-                },
-            ],
-            temperature=temperature,
-            max_completion_tokens=max_tokens,
-            stream=False,
-            reasoning_effort="none",
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "rag_decision",
-                    "strict": True,
-                    "schema": RAGDecision.model_json_schema(),
-                },
-            },
-            extra_body={
-                "options": {
-                    "num_ctx": context_size,
-                },
-            },
-        )
-
-        content = response.choices[0].message.content
-
-        if not content:
-            raise ValueError("RAG decision model returned empty content")
-
-        decision = RAGDecision.model_validate_json(content)
-
-        return decision.requires_rag
 
     async def generate_title(
         self,

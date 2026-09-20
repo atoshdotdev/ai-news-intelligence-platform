@@ -48,11 +48,12 @@ def get_chat_service(
     return ChatService(
         llm_client=llm_client,
         system_prompt=config.chat.system_prompt,
-        direct_system_prompt=config.chat.direct_system_prompt,
-        user_prompt=config.chat.user_prompt,
+        retrieval_system_prompt=config.chat.retrieval_system_prompt,
+        final_response_system_prompt=config.chat.final_response_system_prompt,
         chat_repository=chat_repo,
         chat_message_repository=chat_message_repo,
         history_max_chars=config.chat.history_max_chars,
+        max_tool_rounds=config.chat.max_tool_rounds,
     )
 
 
@@ -61,7 +62,6 @@ def get_rag_service(
     session: AsyncSession = Depends(get_session),
     embedding_service: EmbeddingService = Depends(get_embedding_service),
     reranker_service: RerankerService = Depends(get_reranker_service),
-    llm_client=Depends(get_llm_client),
 ) -> RAGService:
     config: Config = request.app.state.config
 
@@ -71,14 +71,8 @@ def get_rag_service(
         chunk_repo=chunk_repo,
         embedding_service=embedding_service,
         reranker_service=reranker_service,
-        llm_client=llm_client,
         retrieval_limit=config.rag.retrieval_limit,
         result_limit=config.rag.result_limit,
-        decision_model=config.rag.decision_model,
-        decision_temperature=config.rag.decision_temperature,
-        decision_context_size=config.rag.decision_context_size,
-        decision_max_tokens=config.rag.decision_max_tokens,
-        decision_system_prompt=config.rag.decision_system_prompt,
         max_chunks_per_article=config.rag.max_chunks_per_article,
         neighbor_chunks=config.rag.neighbor_chunks,
     )
@@ -104,14 +98,12 @@ async def chat_stream(
             user_id=current_user.id,
             title="New chat",
         )
-
         is_new_chat = True
     else:
         chat = await chat_service.get_chat_entity(
             chat_id=payload.chat_id,
             user_id=current_user.id,
         )
-
         is_new_chat = False
 
     await chat_service.save_message(
@@ -122,23 +114,10 @@ async def chat_stream(
 
     messages = to_llm_messages(payload.messages)
 
-    decision_messages = messages[-4:]
-
-    requires_rag = await rag_service.requires_rag(
-        messages=decision_messages,
+    agent_result = await chat_service.run_agent(
+        messages=messages,
+        rag_service=rag_service,
     )
-
-    if requires_rag:
-        retrieval_query = chat_service.build_retrieval_query(
-            messages=messages,
-        )
-
-        chunks = await rag_service.retrieve(retrieval_query)
-        context = rag_service.build_context(chunks)
-        sources = rag_service.build_sources(chunks)
-    else:
-        context = ""
-        sources = []
 
     async def event_stream():
         message_id = str(uuid4())
@@ -173,10 +152,8 @@ async def chat_stream(
             )
         }\n\n"
 
-        async for token in chat_service.stream_chat(
-            messages=messages,
-            context=context,
-            use_rag=requires_rag,
+        async for token in chat_service.stream_final_response(
+            messages=agent_result.messages,
         ):
             assistant_text += token
 
@@ -199,7 +176,7 @@ async def chat_stream(
             )
         }\n\n"
 
-        for source in sources:
+        for source in agent_result.sources:
             yield f"data: {
                 json.dumps(
                     {
@@ -218,9 +195,12 @@ async def chat_stream(
         )
 
         if is_new_chat:
-            chat.title = await chat_service.generate_title(message.text)
+            chat.title = await chat_service.generate_title(
+                message.text,
+            )
 
         chat.updated_at = datetime.now(timezone.utc)
+
         await chat_service.update_chat(chat)
 
         if is_new_chat:
