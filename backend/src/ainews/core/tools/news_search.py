@@ -11,12 +11,16 @@ NEWS_SEARCH_TOOL: ChatCompletionToolParam = {
     "function": {
         "name": "search_news",
         "description": (
-            "Search the news database for information relevant to the user's "
-            "request. Use this tool when the user asks about news, current "
-            "events, recent developments, people, organizations, places, "
-            "events, or information that may be contained in the news database. "
-            "For follow-up questions, formulate a self-contained search query "
-            "using the conversation history."
+            "Search the news database only when the user's request requires "
+            "news information, such as current events, recent developments, "
+            "specific news events, or recent information about people, "
+            "organizations, places, or topics. "
+            "Do not use this tool for greetings, small talk, casual "
+            "conversation, thanks, goodbyes, or questions that do not require "
+            "news information. "
+            "For follow-up questions that require news retrieval, formulate "
+            "a concise, self-contained search query using the conversation "
+            "history."
         ),
         "parameters": {
             "type": "object",
@@ -24,11 +28,13 @@ NEWS_SEARCH_TOOL: ChatCompletionToolParam = {
                 "query": {
                     "type": "string",
                     "description": (
-                        "A concise, self-contained search query for the news database."
+                        "A concise, self-contained query containing only the "
+                        "news information needed to answer the user's request."
                     ),
                 },
             },
             "required": ["query"],
+            "additionalProperties": False,
         },
     },
 }

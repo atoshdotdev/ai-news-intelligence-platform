@@ -24,7 +24,12 @@ from ainews.core.schemas.chat_schemas import (
     ChatRead,
     ChatRequest,
 )
-from ainews.core.services.chat_service import ChatService
+from ainews.core.services.chat_service import (
+    AgentSearchEvent,
+    AgentSourcesEvent,
+    AgentTextEvent,
+    ChatService,
+)
 from ainews.core.services.embedding_service import EmbeddingService
 from ainews.core.services.rag_service import RAGService
 from ainews.core.services.reranker_service import RerankerService
@@ -114,79 +119,119 @@ async def chat_stream(
 
     messages = to_llm_messages(payload.messages)
 
-    agent_result = await chat_service.run_agent(
-        messages=messages,
-        rag_service=rag_service,
-    )
-
     async def event_stream():
         message_id = str(uuid4())
         text_id = str(uuid4())
         assistant_text = ""
 
-        yield f"data: {
-            json.dumps(
+        yield (
+            "data: "
+            + json.dumps(
                 {
-                    'type': 'start',
-                    'messageId': message_id,
+                    "type": "start",
+                    "messageId": message_id,
                 }
             )
-        }\n\n"
+            + "\n\n"
+        )
 
         if is_new_chat:
-            yield f"data: {
-                json.dumps(
+            yield (
+                "data: "
+                + json.dumps(
                     {
-                        'type': 'data-chatId',
-                        'data': str(chat.id),
+                        "type": "data-chatId",
+                        "data": str(chat.id),
                     }
                 )
-            }\n\n"
+                + "\n\n"
+            )
 
-        yield f"data: {
-            json.dumps(
+        yield (
+            "data: "
+            + json.dumps(
                 {
-                    'type': 'text-start',
-                    'id': text_id,
+                    "type": "text-start",
+                    "id": text_id,
                 }
             )
-        }\n\n"
+            + "\n\n"
+        )
 
-        async for token in chat_service.stream_final_response(
-            messages=agent_result.messages,
+        async for event in chat_service.run_agent(
+            messages=messages,
+            rag_service=rag_service,
         ):
-            assistant_text += token
+            if isinstance(event, AgentTextEvent):
+                assistant_text += event.delta
 
-            yield f"data: {
-                json.dumps(
-                    {
-                        'type': 'text-delta',
-                        'id': text_id,
-                        'delta': token,
-                    }
+                yield (
+                    "data: "
+                    + json.dumps(
+                        {
+                            "type": "text-delta",
+                            "id": text_id,
+                            "delta": event.delta,
+                        }
+                    )
+                    + "\n\n"
                 )
-            }\n\n"
 
-        yield f"data: {
-            json.dumps(
+            elif isinstance(event, AgentSearchEvent):
+                if event.type == "search-start":
+                    yield (
+                        "data: "
+                        + json.dumps(
+                            {
+                                "type": "data-agent-status",
+                                "data": {
+                                    "status": "searching",
+                                    "query": event.query,
+                                },
+                            }
+                        )
+                        + "\n\n"
+                    )
+
+                elif event.type == "search-end":
+                    yield (
+                        "data: "
+                        + json.dumps(
+                            {
+                                "type": "data-agent-status",
+                                "data": {
+                                    "status": "idle",
+                                },
+                            }
+                        )
+                        + "\n\n"
+                    )
+
+            elif isinstance(event, AgentSourcesEvent):
+                for source in event.sources:
+                    yield (
+                        "data: "
+                        + json.dumps(
+                            {
+                                "type": "source-url",
+                                "sourceId": source.source_id,
+                                "url": source.url,
+                                "title": source.title,
+                            }
+                        )
+                        + "\n\n"
+                    )
+
+        yield (
+            "data: "
+            + json.dumps(
                 {
-                    'type': 'text-end',
-                    'id': text_id,
+                    "type": "text-end",
+                    "id": text_id,
                 }
             )
-        }\n\n"
-
-        for source in agent_result.sources:
-            yield f"data: {
-                json.dumps(
-                    {
-                        'type': 'source-url',
-                        'sourceId': source.source_id,
-                        'url': source.url,
-                        'title': source.title,
-                    }
-                )
-            }\n\n"
+            + "\n\n"
+        )
 
         await chat_service.save_message(
             chat_id=chat.id,
@@ -204,14 +249,16 @@ async def chat_stream(
         await chat_service.update_chat(chat)
 
         if is_new_chat:
-            yield f"data: {
-                json.dumps(
+            yield (
+                "data: "
+                + json.dumps(
                     {
-                        'type': 'data-chatTitle',
-                        'data': chat.title,
+                        "type": "data-chatTitle",
+                        "data": chat.title,
                     }
                 )
-            }\n\n"
+                + "\n\n"
+            )
 
         yield "data: [DONE]\n\n"
 

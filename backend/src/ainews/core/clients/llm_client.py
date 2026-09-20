@@ -2,7 +2,7 @@ from collections.abc import AsyncGenerator
 
 from openai import AsyncOpenAI
 from openai.types.chat import (
-    ChatCompletion,
+    ChatCompletionChunk,
     ChatCompletionMessageParam,
 )
 
@@ -24,24 +24,27 @@ class LLMClient:
         )
         self.config = config
 
-    async def create_agent_response(
+    async def agent_stream(
         self,
         messages: list[ChatCompletionMessageParam],
-    ) -> ChatCompletion:
-        return await self.client.chat.completions.create(
+    ) -> AsyncGenerator[ChatCompletionChunk, None]:
+        stream = await self.client.chat.completions.create(
             model=self.config.chat.model,
             messages=messages,
             temperature=self.config.chat.temperature,
             max_completion_tokens=self.config.chat.max_tokens,
-            stream=False,
+            stream=True,
             tools=[NEWS_SEARCH_TOOL],
-            reasoning_effort="none",
+            reasoning_effort="high",
             extra_body={
                 "options": {
                     "num_ctx": self.config.chat.context_size,
                 },
             },
         )
+
+        async for chunk in stream:
+            yield chunk
 
     async def chat_stream(
         self,
@@ -53,7 +56,7 @@ class LLMClient:
             temperature=self.config.chat.temperature,
             max_completion_tokens=self.config.chat.max_tokens,
             stream=True,
-            reasoning_effort="none",
+            reasoning_effort="high",
             extra_body={
                 "options": {
                     "num_ctx": self.config.chat.context_size,

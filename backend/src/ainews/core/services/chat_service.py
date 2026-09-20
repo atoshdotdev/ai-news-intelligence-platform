@@ -1,5 +1,4 @@
 from collections.abc import AsyncGenerator
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import cast
 from uuid import UUID
@@ -16,20 +15,38 @@ from ainews.core.schemas.chat_schemas import (
     LLMMessage,
 )
 from ainews.core.services.rag_service import RAGService
-from ainews.core.tools.news_search import (
-    NewsSearchArguments,
-)
+from ainews.core.tools.news_search import NewsSearchArguments
 from fastapi import HTTPException, status
 from openai.types.chat import (
-    ChatCompletionMessageFunctionToolCall,
     ChatCompletionMessageParam,
 )
 
 
-@dataclass
-class AgentResult:
-    messages: list[ChatCompletionMessageParam]
-    sources: list[ChatSource]
+class AgentTextEvent:
+    type: str = "text"
+
+    def __init__(self, delta: str):
+        self.delta = delta
+
+
+class AgentSearchEvent:
+    def __init__(
+        self,
+        type: str,
+        query: str,
+    ):
+        self.type = type
+        self.query = query
+
+
+class AgentSourcesEvent:
+    type: str = "sources"
+
+    def __init__(self, sources: list[ChatSource]):
+        self.sources = sources
+
+
+AgentEvent = AgentTextEvent | AgentSearchEvent | AgentSourcesEvent
 
 
 class ChatService:
@@ -53,10 +70,7 @@ class ChatService:
         self.history_max_chars = history_max_chars
         self.max_tool_rounds = max_tool_rounds
 
-    def _build_system_prompt(
-        self,
-        additional_prompt: str,
-    ) -> str:
+    def _build_system_prompt(self, additional_prompt: str) -> str:
         current_datetime = datetime.now(timezone.utc).isoformat()
 
         base_prompt = self.system_prompt.format(
@@ -65,11 +79,32 @@ class ChatService:
 
         return f"{base_prompt}\n\n{additional_prompt}"
 
+    def _prepare_final_messages(
+        self,
+        messages: list[ChatCompletionMessageParam],
+    ) -> list[ChatCompletionMessageParam]:
+        final_messages = list(messages)
+
+        if not final_messages:
+            raise ValueError("No messages provided")
+
+        if final_messages[0]["role"] != "system":
+            raise ValueError("First message must be a system message")
+
+        final_messages[0] = {
+            "role": "system",
+            "content": self._build_system_prompt(
+                self.final_response_system_prompt,
+            ),
+        }
+
+        return final_messages
+
     async def run_agent(
         self,
         messages: list[LLMMessage],
         rag_service: RAGService,
-    ) -> AgentResult:
+    ) -> AsyncGenerator[AgentEvent, None]:
         if not messages:
             raise ValueError("No messages provided")
 
@@ -106,131 +141,179 @@ class ChatService:
             },
         ]
 
-        sources: list[ChatSource] = []
         seen_source_ids: set[str] = set()
 
         for _ in range(self.max_tool_rounds):
-            response = await self.llm_client.create_agent_response(
+            text_content = ""
+            tool_calls: dict[int, dict[str, str]] = {}
+
+            async for chunk in self.llm_client.agent_stream(
                 messages=agent_messages,
-            )
+            ):
+                if not chunk.choices:
+                    continue
 
-            assistant_message = response.choices[0].message
+                choice = chunk.choices[0]
+                delta = choice.delta
 
-            if not assistant_message.tool_calls:
-                return AgentResult(
-                    messages=agent_messages,
-                    sources=sources,
-                )
+                if delta.content:
+                    text_content += delta.content
+                    yield AgentTextEvent(
+                        delta=delta.content,
+                    )
 
-            function_tool_calls = [
-                tool_call
-                for tool_call in assistant_message.tool_calls
-                if isinstance(
-                    tool_call,
-                    ChatCompletionMessageFunctionToolCall,
-                )
-            ]
+                if not delta.tool_calls:
+                    continue
+
+                for tool_call in delta.tool_calls:
+                    index = tool_call.index
+
+                    if index not in tool_calls:
+                        tool_calls[index] = {
+                            "id": "",
+                            "name": "",
+                            "arguments": "",
+                        }
+
+                    accumulated = tool_calls[index]
+
+                    if tool_call.id:
+                        accumulated["id"] += tool_call.id
+
+                    if tool_call.function:
+                        if tool_call.function.name:
+                            accumulated["name"] += tool_call.function.name
+
+                        if tool_call.function.arguments:
+                            accumulated["arguments"] += tool_call.function.arguments
+
+            if not tool_calls:
+                return
+
+            function_tool_calls: list[dict[str, str]] = []
+
+            for tool_call in tool_calls.values():
+                if not tool_call["id"] or not tool_call["name"]:
+                    continue
+
+                function_tool_calls.append(tool_call)
 
             if not function_tool_calls:
-                return AgentResult(
-                    messages=agent_messages,
-                    sources=sources,
-                )
+                return
+
+            assistant_tool_calls = [
+                {
+                    "id": tool_call["id"],
+                    "type": "function",
+                    "function": {
+                        "name": tool_call["name"],
+                        "arguments": tool_call["arguments"],
+                    },
+                }
+                for tool_call in function_tool_calls
+            ]
 
             agent_messages.append(
                 cast(
                     ChatCompletionMessageParam,
                     {
                         "role": "assistant",
-                        "content": assistant_message.content,
-                        "tool_calls": [
-                            {
-                                "id": tool_call.id,
-                                "type": "function",
-                                "function": {
-                                    "name": tool_call.function.name,
-                                    "arguments": tool_call.function.arguments,
-                                },
-                            }
-                            for tool_call in function_tool_calls
-                        ],
+                        "content": text_content or None,
+                        "tool_calls": assistant_tool_calls,
                     },
                 )
             )
 
             for tool_call in function_tool_calls:
-                if tool_call.function.name != "search_news":
+                tool_call_id = tool_call["id"]
+                tool_name = tool_call["name"]
+
+                if tool_name != "search_news":
                     agent_messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": (f"Unknown tool: {tool_call.function.name}"),
-                        }
+                        cast(
+                            ChatCompletionMessageParam,
+                            {
+                                "role": "tool",
+                                "tool_call_id": tool_call_id,
+                                "content": f"Unknown tool: {tool_name}",
+                            },
+                        )
                     )
                     continue
 
                 try:
                     arguments = NewsSearchArguments.model_validate_json(
-                        tool_call.function.arguments,
+                        tool_call["arguments"],
                     )
-
-                    chunks = await rag_service.retrieve(
-                        arguments.query,
+                except Exception:
+                    agent_messages.append(
+                        cast(
+                            ChatCompletionMessageParam,
+                            {
+                                "role": "tool",
+                                "tool_call_id": tool_call_id,
+                                "content": (
+                                    "The search request was invalid. "
+                                    "Try formulating a different search query."
+                                ),
+                            },
+                        )
                     )
+                    continue
 
+                yield AgentSearchEvent(
+                    type="search-start",
+                    query=arguments.query,
+                )
+
+                try:
+                    chunks = await rag_service.retrieve(arguments.query)
                     context = rag_service.build_context(chunks)
+
+                    retrieved_sources: list[ChatSource] = []
 
                     for source in rag_service.build_sources(chunks):
                         if source.source_id in seen_source_ids:
                             continue
 
                         seen_source_ids.add(source.source_id)
-                        sources.append(source)
+                        retrieved_sources.append(source)
+
+                    if retrieved_sources:
+                        yield AgentSourcesEvent(
+                            sources=retrieved_sources,
+                        )
 
                     tool_content = context if context else "No relevant news was found."
 
                 except Exception:
                     tool_content = (
                         "The news search could not be completed. "
-                        "You may try a different search query if necessary."
+                        "Try a different search query if necessary."
                     )
 
                 agent_messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": tool_call.id,
-                        "content": tool_content,
-                    }
+                    cast(
+                        ChatCompletionMessageParam,
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call_id,
+                            "content": tool_content,
+                        },
+                    )
                 )
 
-        return AgentResult(
-            messages=agent_messages,
-            sources=sources,
-        )
+                yield AgentSearchEvent(
+                    type="search-end",
+                    query=arguments.query,
+                )
 
-    async def stream_final_response(
-        self,
-        messages: list[ChatCompletionMessageParam],
-    ) -> AsyncGenerator[str, None]:
-        final_messages = list(messages)
-
-        if not final_messages:
-            raise ValueError("No messages provided")
-
-        if final_messages[0]["role"] != "system":
-            raise ValueError("First message must be a system message")
-
-        final_messages[0] = {
-            "role": "system",
-            "content": self._build_system_prompt(
-                self.final_response_system_prompt,
-            ),
-        }
+        final_messages = self._prepare_final_messages(agent_messages)
 
         async for token in self.llm_client.chat_stream(
             messages=final_messages,
         ):
-            yield token
+            yield AgentTextEvent(delta=token)
 
     def trim_history(
         self,
@@ -266,7 +349,9 @@ class ChatService:
             message.content for message in messages if message.role == "user"
         ]
 
-        return "\n".join(user_messages[-max_user_messages:])
+        return "\n".join(
+            user_messages[-max_user_messages:],
+        )
 
     async def create_chat(
         self,

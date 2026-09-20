@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Chat, useChat } from "@ai-sdk/react";
+import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 
 import { ChatMessage } from "@/features/chat/components/chat-message";
@@ -33,6 +33,8 @@ type ChatContentProps = {
   initialMessages: UIMessage[];
 };
 
+type AgentStatus = "searching" | null;
+
 export function ChatContent({
   initialChatId,
   initialMessages,
@@ -40,6 +42,7 @@ export function ChatContent({
   const queryClient = useQueryClient();
 
   const [chatId, setChatId] = useState<string | undefined>(initialChatId);
+  const [agentStatus, setAgentStatus] = useState<AgentStatus>(null);
 
   const { messages, sendMessage, status, stop, error } = useChat({
     messages: initialMessages,
@@ -104,12 +107,37 @@ export function ChatContent({
           );
         });
       }
+
+      if (
+        dataPart.type === "data-agent-status" &&
+        typeof dataPart.data === "object" &&
+        dataPart.data !== null &&
+        "status" in dataPart.data
+      ) {
+        const agentStatus = dataPart.data.status;
+
+        if (agentStatus === "searching") {
+          setAgentStatus("searching");
+        } else if (agentStatus === "idle") {
+          setAgentStatus(null);
+        }
+      }
+    },
+
+    onFinish: () => {
+      setAgentStatus(null);
     },
   });
 
   const isBusy = status === "submitted" || status === "streaming";
 
   const lastMessage = messages.at(-1);
+
+  const isStreamingText =
+    lastMessage?.role === "assistant" &&
+    lastMessage.parts.some(
+      (part) => part.type === "text" && part.text.length > 0,
+    );
 
   return (
     <div className="mx-auto flex min-h-0 w-full flex-1 flex-col">
@@ -145,10 +173,12 @@ export function ChatContent({
                   </MessageScrollerItem>
                 ))}
 
-                {status === "submitted" && (
-                  <MessageScrollerItem messageId="thinking">
+                {isBusy && !isStreamingText && (
+                  <MessageScrollerItem messageId="agent-status">
                     <div className="flex shimmer items-center gap-2 px-3 text-sm text-muted-foreground">
-                      Thinking…
+                      {agentStatus === "searching"
+                        ? "Searching news…"
+                        : "Thinking…"}
                     </div>
                   </MessageScrollerItem>
                 )}

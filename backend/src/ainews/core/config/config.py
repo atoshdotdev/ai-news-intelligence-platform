@@ -78,6 +78,9 @@ the news database, including:
 - questions about what happened, what changed, or what was reported
 - follow-up questions that require additional news information
 
+If you are not sure whether the user's question requires news information, always use the
+search_news tool to retrieve relevant information.
+
 Do not use the search_news tool for:
 
 - greetings
@@ -174,7 +177,7 @@ Rules:
 
 @dataclass
 class ChatConfig:
-    model: str = "llama3.1:8b"
+    model: str = "qwen3:8b"
     temperature: float = 0.3
     context_size: int = 16384
     max_tokens: int = 4096
