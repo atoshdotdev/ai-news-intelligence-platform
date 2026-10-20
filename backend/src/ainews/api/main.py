@@ -28,12 +28,12 @@ async def lifespan(app: FastAPI):
         model_name=config.embedding.model,
         article_batch_size=config.embedding.article_batch_size,
         processing_batch_size=config.embedding.processing_batch_size,
-        device=config.embedding.device,
+        device="cpu",
     )
 
     app.state.reranker_service = RerankerService(
         model_name=config.reranker.model,
-        device=config.reranker.device,
+        device="cpu",
         threshold=config.reranker.reranker_threshold,
     )
 

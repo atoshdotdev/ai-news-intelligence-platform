@@ -4,32 +4,33 @@ import { Button } from "@/components/ui/button";
 
 const suggestions = [
   {
-    label: "What’s in the news today?",
-    prompt: "What are the most important news stories right now?",
-  },
-  {
-    label: "Explain a major story",
+    label: "Latest tech news",
     prompt:
-      "What are the most important details about a major recent news story?",
+      "What are the latest important developments in technology and artificial intelligence?",
   },
   {
-    label: "Compare news coverage",
+    label: "Major world events",
     prompt:
-      "Compare how different news sources are covering the same major story.",
+      "What are the most important recent developments in international news and world affairs?",
   },
   {
-    label: "What’s trending?",
-    prompt: "What news topics and events are currently trending?",
-  },
-  {
-    label: "Summarize recent events",
+    label: "Latest US news",
     prompt:
-      "Summarize the most important recent events and explain why they matter.",
+      "What are the most important recent developments in the United States?",
   },
   {
-    label: "Find related stories",
+    label: "Latest Europe news",
+    prompt: "What are the most important recent developments in Europe?",
+  },
+  {
+    label: "Recent conflicts",
     prompt:
-      "Find recent news stories that are related to the most important events in the news.",
+      "What are the latest significant developments in major international conflicts and wars?",
+  },
+  {
+    label: "Recent disasters",
+    prompt:
+      "What major natural disasters or other large-scale disasters have happened recently?",
   },
 ];
 
